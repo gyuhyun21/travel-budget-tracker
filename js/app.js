@@ -107,7 +107,13 @@ function bindBackupButtons() {
         document.getElementById('settings-message').textContent = '복원되었습니다.';
       } catch (err) {
         alert('올바르지 않은 백업 파일입니다.');
+      } finally {
+        e.target.value = '';
       }
+    };
+    reader.onerror = () => {
+      alert('파일을 읽는 중 오류가 발생했습니다.');
+      e.target.value = '';
     };
     reader.readAsText(file);
   });

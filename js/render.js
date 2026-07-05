@@ -1,3 +1,14 @@
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  // div.innerHTML escapes &, <, > but NOT quote characters (text-node
+  // serialization doesn't escape quotes). Since this helper is also used to
+  // interpolate into HTML attributes (e.g. value="..."), quotes must be
+  // escaped too, or a memo containing a `"` would still break out of the
+  // attribute.
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function renderSettingsScreen() {
   const settings = getSettings() || {};
   const isFirstRun = Object.keys(settings).length === 0;
@@ -59,7 +70,7 @@ function renderDashboardScreen() {
     <h3>최근 지출</h3>
     <ul id="recent-expense-list">
       ${recent.length
-        ? recent.map(e => `<li>${e.date} · ${e.amount.toLocaleString()} ${e.currency} (${Math.round(e.krwAmount).toLocaleString()}원) - ${e.memo || ''}</li>`).join('')
+        ? recent.map(e => `<li>${e.date} · ${e.amount.toLocaleString()} ${e.currency} (${Math.round(e.krwAmount).toLocaleString()}원) - ${escapeHtml(e.memo || '')}</li>`).join('')
         : '<li>지출 내역이 없습니다.</li>'}
     </ul>
   `;
@@ -68,7 +79,8 @@ function renderDashboardScreen() {
 function renderExpenseFormScreen(editId = null) {
   const container = document.getElementById('screen-add-expense');
   const existing = editId ? getExpenseById(editId) : null;
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   container.innerHTML = `
     <h2>${existing ? '지출 수정' : '지출 추가'}</h2>
     <form id="expense-form">
@@ -87,7 +99,7 @@ function renderExpenseFormScreen(editId = null) {
         <input type="number" id="input-expense-amount" value="${existing ? existing.amount : ''}" required>
       </label>
       <label>메모
-        <input type="text" id="input-expense-memo" value="${existing ? (existing.memo || '') : ''}">
+        <input type="text" id="input-expense-memo" value="${existing ? escapeHtml(existing.memo || '') : ''}">
       </label>
       <button type="submit">저장</button>
       ${existing ? '<button type="button" id="btn-delete-expense">삭제</button>' : ''}
@@ -106,7 +118,7 @@ function renderExpenseListScreen() {
         ? expenses.map(e => `
           <li>
             <button class="expense-item" type="button" data-id="${e.id}">
-              ${e.date} · ${e.amount.toLocaleString()} ${e.currency} (${Math.round(e.krwAmount).toLocaleString()}원) - ${e.memo || ''}
+              ${e.date} · ${e.amount.toLocaleString()} ${e.currency} (${Math.round(e.krwAmount).toLocaleString()}원) - ${escapeHtml(e.memo || '')}
             </button>
           </li>
         `).join('')
