@@ -23,13 +23,13 @@ function renderSettingsScreen() {
         <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 치앙마이 여행, 팀 워크샵">
 
         <label class="field-label" for="input-total-budget">총 예산 (원)</label>
-        <input type="number" id="input-total-budget" value="${settings.totalBudget ?? ''}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-total-budget" value="${formatMoneyValue(settings.totalBudget)}" required>
 
         <label class="field-label" for="input-thb-rate">1바트(THB) = ? 원</label>
-        <input type="number" id="input-thb-rate" value="${settings.thbRate ?? ''}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate)}" required>
 
         <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
-        <input type="number" id="input-usd-rate" value="${settings.usdRate ?? ''}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate)}" required>
 
         <label class="field-label" for="input-trip-start">시작일</label>
         <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
@@ -205,7 +205,7 @@ function renderExpenseFormScreen(editId = null) {
         <div class="segmented" id="currency-segmented">${currencySegmentedHtml(selectedCurrency)}</div>
 
         <label class="field-label" for="input-expense-amount">금액</label>
-        <input type="number" id="input-expense-amount" value="${existing ? existing.amount : ''}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
 
         <label class="field-label">카테고리</label>
         <div class="segmented" id="category-segmented">${categorySegmentedHtml(selectedCategory)}</div>

@@ -12,14 +12,16 @@ function showScreen(name) {
 }
 
 function bindSettingsForm() {
-  document.getElementById('screen-settings').addEventListener('submit', (e) => {
+  const container = document.getElementById('screen-settings');
+
+  container.addEventListener('submit', (e) => {
     if (e.target.id !== 'settings-form') return;
     e.preventDefault();
     const settings = {
       tripName: document.getElementById('input-trip-name').value.trim(),
-      totalBudget: Number(document.getElementById('input-total-budget').value),
-      thbRate: Number(document.getElementById('input-thb-rate').value),
-      usdRate: Number(document.getElementById('input-usd-rate').value),
+      totalBudget: parseMoneyInput(document.getElementById('input-total-budget').value),
+      thbRate: parseMoneyInput(document.getElementById('input-thb-rate').value),
+      usdRate: parseMoneyInput(document.getElementById('input-usd-rate').value),
       tripStartDate: document.getElementById('input-trip-start').value,
       tripEndDate: document.getElementById('input-trip-end').value
     };
@@ -27,6 +29,10 @@ function bindSettingsForm() {
     const message = document.getElementById('settings-message');
     message.textContent = '저장되었습니다.';
     message.style.display = 'block';
+  });
+
+  container.addEventListener('input', (e) => {
+    if (e.target.classList.contains('input-money')) formatMoneyInput(e.target);
   });
 }
 
@@ -47,7 +53,7 @@ function bindExpenseForm() {
     const id = document.getElementById('input-expense-id').value;
     const date = document.getElementById('input-expense-date').value;
     const currency = document.getElementById('input-expense-currency').value;
-    const amount = Number(document.getElementById('input-expense-amount').value);
+    const amount = parseMoneyInput(document.getElementById('input-expense-amount').value);
     const category = document.getElementById('input-expense-category').value;
     const memo = document.getElementById('input-expense-memo').value;
     const krwAmount = toKRW(amount, currency, settings);
@@ -104,6 +110,10 @@ function bindExpenseForm() {
     }
   });
 
+  container.addEventListener('input', (e) => {
+    if (e.target.classList.contains('input-money')) formatMoneyInput(e.target);
+  });
+
   container.addEventListener('change', async (e) => {
     if (e.target.id !== 'input-receipt-photo') return;
     const file = e.target.files[0];
@@ -120,7 +130,9 @@ function bindExpenseForm() {
       const guessedCategory = guessCategoryFromText(text);
 
       if (guessedAmount !== null) {
-        document.getElementById('input-expense-amount').value = guessedAmount;
+        const amountEl = document.getElementById('input-expense-amount');
+        amountEl.value = guessedAmount;
+        formatMoneyInput(amountEl);
       }
       if (guessedMemo) {
         document.getElementById('input-expense-memo').value = guessedMemo;
