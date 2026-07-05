@@ -63,6 +63,16 @@ function renderSettingsScreen() {
         <input type="file" id="input-import" accept="application/json">
       </div>
     </div>
+
+    ${isFirstRun ? '' : `
+      <h3 class="section-title">새 여행 준비</h3>
+      <div class="card-section">
+        <div class="card-section-pad">
+          <p class="field-hint" style="margin:0 0 12px">지금까지의 예산과 지출 기록을 모두 지우고, 다음 여행을 위해 처음부터 다시 설정해요. 필요하면 먼저 위에서 JSON으로 백업해두세요.</p>
+          <button id="btn-reset-data" type="button" class="btn-danger">예산 &amp; 지출 초기화</button>
+        </div>
+      </div>
+    `}
     <p id="settings-message" class="banner-info" style="display:none"></p>
   `;
 }
@@ -105,7 +115,7 @@ function renderDashboardScreen() {
   const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
 
   const ringAmountText = `${Math.abs(remaining).toLocaleString()}원`;
-  const ringFontSize = fitFontSize(ringAmountText, [[8, 27], [10, 22], [12, 19], [15, 16]]);
+  const ringFontSize = fitFontSize(ringAmountText, [[8, 20], [10, 17], [12, 15], [15, 12]]);
   const totalBudgetText = `${settings.totalBudget.toLocaleString()}원`;
   const totalSpentText = `${Math.round(totalSpent).toLocaleString()}원`;
   const statFontSize = (text) => fitFontSize(text, [[10, 17], [12, 14], [15, 12]]);
@@ -162,12 +172,17 @@ function renderDashboardScreen() {
 
 function expenseCardHtml(e) {
   const cat = getCategoryById(e.category);
+  const [, month, day] = e.date.split('-');
   return `
     <button class="expense-card expense-item" type="button" data-id="${e.id}">
+      <span class="expense-date-col">
+        <span class="expense-date-day">${day}</span>
+        <span class="expense-date-month">${Number(month)}월</span>
+      </span>
       <span class="cat-dot" style="background:${cat.color}"></span>
       <span class="expense-info">
         <span class="expense-memo">${escapeHtml(e.memo || cat.label)}</span>
-        <span class="expense-meta">${e.date} · ${cat.label}</span>
+        <span class="expense-meta">${cat.label}</span>
       </span>
       <span class="expense-amount">
         ${Math.round(e.krwAmount).toLocaleString()}원

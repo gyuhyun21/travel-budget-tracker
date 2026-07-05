@@ -50,3 +50,8 @@ function deleteExpense(id) {
 function getExpenseById(id) {
   return getExpenses().find(e => e.id === id) || null;
 }
+
+function resetAllData() {
+  localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+  localStorage.removeItem(STORAGE_KEYS.EXPENSES);
+}

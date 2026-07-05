@@ -220,11 +220,21 @@ function bindBackupButtons() {
   });
 }
 
+function bindResetButton() {
+  document.getElementById('screen-settings').addEventListener('click', (e) => {
+    if (e.target.id !== 'btn-reset-data') return;
+    if (!confirm('예산과 지출 기록을 모두 삭제하고 처음부터 다시 시작합니다. 계속할까요?')) return;
+    resetAllData();
+    showScreen('settings');
+  });
+}
+
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
 bindAddExpenseButtons();
 bindBackupButtons();
+bindResetButton();
 
 if (!getSettings()) {
   showScreen('settings');
