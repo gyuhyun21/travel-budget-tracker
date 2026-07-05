@@ -4,6 +4,7 @@ function showScreen(name) {
   document.getElementById(`screen-${name}`).classList.add('active');
   document.querySelector(`.nav-btn[data-screen="${name}"]`).classList.add('active');
   if (name === 'settings') renderSettingsScreen();
+  if (name === 'dashboard') renderDashboardScreen();
 }
 
 function bindSettingsForm() {
