@@ -16,6 +16,7 @@ function bindSettingsForm() {
     if (e.target.id !== 'settings-form') return;
     e.preventDefault();
     const settings = {
+      tripName: document.getElementById('input-trip-name').value.trim(),
       totalBudget: Number(document.getElementById('input-total-budget').value),
       thbRate: Number(document.getElementById('input-thb-rate').value),
       usdRate: Number(document.getElementById('input-usd-rate').value),

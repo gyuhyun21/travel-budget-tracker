@@ -15,10 +15,13 @@ function renderSettingsScreen() {
   const container = document.getElementById('screen-settings');
   container.innerHTML = `
     <h2>설정</h2>
-    ${isFirstRun ? '<p class="banner-info" id="settings-first-run-banner">환영합니다! 여행 예산과 환율을 먼저 설정해주세요.</p>' : ''}
+    ${isFirstRun ? '<p class="banner-info" id="settings-first-run-banner">환영합니다! 제목과 예산, 환율을 먼저 설정해주세요.</p>' : ''}
     <div class="card-section">
-      <h3 class="section-title" style="margin-top:0">예산 &amp; 환율</h3>
+      <h3 class="section-title" style="margin-top:0">제목 &amp; 기간</h3>
       <form id="settings-form">
+        <label class="field-label" for="input-trip-name" style="margin-top:0">제목</label>
+        <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 치앙마이 여행, 팀 워크샵">
+
         <label class="field-label" for="input-total-budget">총 예산 (원)</label>
         <input type="number" id="input-total-budget" value="${settings.totalBudget ?? ''}" required>
 
@@ -28,10 +31,10 @@ function renderSettingsScreen() {
         <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
         <input type="number" id="input-usd-rate" value="${settings.usdRate ?? ''}" required>
 
-        <label class="field-label" for="input-trip-start">여행 시작일</label>
+        <label class="field-label" for="input-trip-start">시작일</label>
         <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
 
-        <label class="field-label" for="input-trip-end">여행 종료일</label>
+        <label class="field-label" for="input-trip-end">종료일</label>
         <input type="date" id="input-trip-end" value="${settings.tripEndDate ?? ''}" required>
 
         <button type="submit" class="btn-primary">저장</button>
@@ -69,6 +72,8 @@ function renderDashboardScreen() {
   const overBudget = remaining < 0;
   const ringColor = overBudget ? 'var(--color-danger)' : percent >= 80 ? 'var(--color-primary)' : 'var(--color-secondary)';
   const tripLabel = tripStatusLabel(settings);
+  const tripName = settings.tripName?.trim();
+  document.title = tripName ? `${tripName} 가계부` : '여행 가계부';
   const recent = [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
   const byCategory = {};
@@ -83,7 +88,7 @@ function renderDashboardScreen() {
   const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
 
   container.innerHTML = `
-    <h2>대시보드</h2>
+    <h2>${tripName ? escapeHtml(tripName) : '대시보드'}</h2>
     <p class="trip-pill">${tripLabel}</p>
 
     <div class="budget-ring" style="--pct:${percent}; --ring-color:${ringColor}">

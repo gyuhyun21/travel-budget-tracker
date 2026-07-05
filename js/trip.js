@@ -1,6 +1,6 @@
 function tripStatusLabel(settings, today = new Date()) {
   if (!settings || !settings.tripStartDate || !settings.tripEndDate) {
-    return '여행 일정 미설정';
+    return '일정 미설정';
   }
   const toDateOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const start = toDateOnly(new Date(settings.tripStartDate));
@@ -10,12 +10,12 @@ function tripStatusLabel(settings, today = new Date()) {
 
   if (now < start) {
     const days = Math.round((start - now) / MS_PER_DAY);
-    return `여행 D-${days}`;
+    return `D-${days}`;
   }
   if (now > end) {
-    return '여행 종료';
+    return '종료';
   }
   const dayNum = Math.round((now - start) / MS_PER_DAY) + 1;
   const totalDays = Math.round((end - start) / MS_PER_DAY) + 1;
-  return `여행 ${dayNum}일차 / 총 ${totalDays}일`;
+  return `${dayNum}일차 / 총 ${totalDays}일`;
 }
