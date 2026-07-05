@@ -1,7 +1,8 @@
 // Approximate reference rates shown as a first-run starting point only —
 // the settings screen always asks the user to confirm/adjust them.
-const DEFAULT_THB_RATE = 39;
-const DEFAULT_USD_RATE = 1380;
+// (checked against real market rates around 2026-07: ~46 KRW/THB, ~1530 KRW/USD)
+const DEFAULT_THB_RATE = 46;
+const DEFAULT_USD_RATE = 1530;
 
 function formatMoneyValue(n) {
   if (n === undefined || n === null || n === '') return '';

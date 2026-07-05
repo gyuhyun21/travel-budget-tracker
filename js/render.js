@@ -24,39 +24,44 @@ function renderSettingsScreen() {
   const isFirstRun = Object.keys(settings).length === 0;
   const container = document.getElementById('screen-settings');
   container.innerHTML = `
-    <h2>설정</h2>
+    <div class="ios-header"><h1 class="ios-large-title">설정</h1></div>
     ${isFirstRun ? '<p class="banner-info" id="settings-first-run-banner">환영합니다! 제목과 예산, 환율을 먼저 설정해주세요.</p>' : ''}
+    <h3 class="section-title">제목 &amp; 기간</h3>
     <div class="card-section">
-      <h3 class="section-title" style="margin-top:0">제목 &amp; 기간</h3>
-      <form id="settings-form">
-        <label class="field-label" for="input-trip-name" style="margin-top:0">제목</label>
-        <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 치앙마이 여행, 팀 워크샵">
+      <div class="card-section-pad">
+        <form id="settings-form">
+          <label class="field-label" style="margin-top:0" for="input-trip-name">제목</label>
+          <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 치앙마이 여행, 팀 워크샵">
 
-        <label class="field-label" for="input-total-budget">총 예산 (원)</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-total-budget" value="${formatMoneyValue(settings.totalBudget)}" required>
+          <label class="field-label" for="input-total-budget">총 예산 (원)</label>
+          <input type="text" inputmode="decimal" class="input-money" id="input-total-budget" value="${formatMoneyValue(settings.totalBudget)}" required>
 
-        <label class="field-label" for="input-thb-rate">1바트(THB) = ? 원</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate ?? DEFAULT_THB_RATE)}" required>
-        ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
+          <label class="field-label" for="input-thb-rate">1바트(THB) = ? 원</label>
+          <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate ?? DEFAULT_THB_RATE)}" required>
+          ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
 
-        <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate ?? DEFAULT_USD_RATE)}" required>
-        ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
+          <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
+          <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate ?? DEFAULT_USD_RATE)}" required>
+          ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
 
-        <label class="field-label" for="input-trip-start">시작일</label>
-        <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
+          <label class="field-label" for="input-trip-start">시작일</label>
+          <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
 
-        <label class="field-label" for="input-trip-end">종료일</label>
-        <input type="date" id="input-trip-end" value="${settings.tripEndDate ?? ''}" required>
+          <label class="field-label" for="input-trip-end">종료일</label>
+          <input type="date" id="input-trip-end" value="${settings.tripEndDate ?? ''}" required>
 
-        <button type="submit" class="btn-primary">저장</button>
-      </form>
+          <button type="submit" class="btn-primary">저장</button>
+        </form>
+      </div>
     </div>
+
+    <h3 class="section-title">데이터 백업</h3>
     <div class="card-section">
-      <h3 class="section-title" style="margin-top:0">데이터 백업</h3>
-      <button id="btn-export" type="button" class="btn-export">JSON으로 내보내기</button>
-      <label class="field-label field-file" for="input-import">JSON 불러오기</label>
-      <input type="file" id="input-import" accept="application/json">
+      <div class="card-section-pad">
+        <button id="btn-export" type="button" class="btn-export">JSON으로 내보내기</button>
+        <label class="field-label field-file" for="input-import">JSON 불러오기</label>
+        <input type="file" id="input-import" accept="application/json">
+      </div>
     </div>
     <p id="settings-message" class="banner-info" style="display:none"></p>
   `;
@@ -67,9 +72,9 @@ function renderDashboardScreen() {
   const container = document.getElementById('screen-dashboard');
   if (!settings) {
     container.innerHTML = `
-      <h2>대시보드</h2>
+      <div class="ios-header"><h1 class="ios-large-title">대시보드</h1></div>
       <div class="empty-state">
-        <div class="empty-icon">🧭</div>
+        <div class="empty-icon">${ICON_INFO}</div>
         <div class="empty-text">먼저 설정 화면에서<br>예산과 환율을 입력해주세요.</div>
       </div>
     `;
@@ -82,7 +87,7 @@ function renderDashboardScreen() {
     ? Math.min(100, Math.round((totalSpent / settings.totalBudget) * 100))
     : 0;
   const overBudget = remaining < 0;
-  const ringColor = overBudget ? 'var(--color-danger)' : percent >= 80 ? 'var(--color-primary)' : 'var(--color-secondary)';
+  const ringColor = overBudget ? 'var(--color-danger)' : percent >= 80 ? 'var(--color-warning)' : 'var(--color-success)';
   const tripLabel = tripStatusLabel(settings);
   const tripName = settings.tripName?.trim();
   document.title = tripName ? `${tripName} 가계부` : '여행 가계부';
@@ -100,13 +105,16 @@ function renderDashboardScreen() {
   const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
 
   const ringAmountText = `${Math.abs(remaining).toLocaleString()}원`;
-  const ringFontSize = fitFontSize(ringAmountText, [[8, 26], [10, 22], [12, 19], [15, 16]]);
+  const ringFontSize = fitFontSize(ringAmountText, [[8, 27], [10, 22], [12, 19], [15, 16]]);
   const totalBudgetText = `${settings.totalBudget.toLocaleString()}원`;
   const totalSpentText = `${Math.round(totalSpent).toLocaleString()}원`;
-  const statFontSize = (text) => fitFontSize(text, [[10, 16.5], [12, 14], [15, 12]]);
+  const statFontSize = (text) => fitFontSize(text, [[10, 17], [12, 14], [15, 12]]);
 
   container.innerHTML = `
-    <h2>${tripName ? escapeHtml(tripName) : '대시보드'}</h2>
+    <div class="ios-header">
+      <h1 class="ios-large-title">${tripName ? escapeHtml(tripName) : '대시보드'}</h1>
+      <button type="button" class="ios-header-action" id="btn-add-expense" aria-label="지출 추가">${ICON_PLUS}</button>
+    </div>
     <p class="trip-pill">${tripLabel}</p>
 
     <div class="budget-ring" style="--pct:${percent}; --ring-color:${ringColor}">
@@ -133,7 +141,7 @@ function renderDashboardScreen() {
       <div class="card-section">
         ${categoryRows.map(({ cat, amount }) => `
           <div class="category-row">
-            <span class="cat-icon">${cat.icon}</span>
+            <span class="cat-dot" style="background:${cat.color}"></span>
             <span class="cat-label">${cat.label}</span>
             <span class="cat-bar-track"><span class="cat-bar-fill" style="width:${Math.round(amount / maxCategoryAmount * 100)}%; background:${cat.color}"></span></span>
             <span class="cat-amount">${Math.round(amount).toLocaleString()}원</span>
@@ -144,10 +152,10 @@ function renderDashboardScreen() {
 
     <h3 class="section-title">최근 지출</h3>
     ${recent.length
-      ? recent.map(e => expenseCardHtml(e)).join('')
+      ? `<div class="card-section">${recent.map(e => expenseCardHtml(e)).join('')}</div>`
       : `<div class="empty-state">
-          <div class="empty-icon">🧾</div>
-          <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 아래 + 버튼으로 첫 지출을 기록해보세요.</div>
+          <div class="empty-icon">${ICON_RECEIPT}</div>
+          <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 위 + 버튼으로 첫 지출을 기록해보세요.</div>
         </div>`}
   `;
 }
@@ -156,7 +164,7 @@ function expenseCardHtml(e) {
   const cat = getCategoryById(e.category);
   return `
     <button class="expense-card expense-item" type="button" data-id="${e.id}">
-      <span class="cat-badge" style="background:${cat.color}22">${cat.icon}</span>
+      <span class="cat-dot" style="background:${cat.color}"></span>
       <span class="expense-info">
         <span class="expense-memo">${escapeHtml(e.memo || cat.label)}</span>
         <span class="expense-meta">${e.date} · ${cat.label}</span>
@@ -165,27 +173,30 @@ function expenseCardHtml(e) {
         ${Math.round(e.krwAmount).toLocaleString()}원
         ${e.currency !== 'KRW' ? `<span class="original">${e.amount.toLocaleString()} ${e.currency}</span>` : ''}
       </span>
+      <span class="chevron">${ICON_CHEVRON}</span>
     </button>
   `;
 }
 
 function currencySegmentedHtml(selected) {
   const options = [
-    { id: 'THB', label: '바트', icon: '🇹🇭' },
-    { id: 'USD', label: '달러', icon: '💵' },
-    { id: 'KRW', label: '원화', icon: '🇰🇷' },
+    { id: 'THB', label: '바트' },
+    { id: 'USD', label: '달러' },
+    { id: 'KRW', label: '원화' },
   ];
-  return options.map(o => `
-    <button type="button" class="segmented-btn currency-btn ${o.id === selected ? 'active' : ''}" data-value="${o.id}">
-      <span class="seg-icon">${o.icon}</span>${o.label}
-    </button>
-  `).join('');
+  const index = Math.max(0, options.findIndex(o => o.id === selected));
+  return `
+    <div class="ios-segment-thumb" style="--count:${options.length}; --index:${index}"></div>
+    ${options.map(o => `
+      <button type="button" class="ios-segment-btn currency-btn ${o.id === selected ? 'active' : ''}" data-value="${o.id}">${o.label}</button>
+    `).join('')}
+  `;
 }
 
 function categorySegmentedHtml(selected) {
   return EXPENSE_CATEGORIES.map(c => `
-    <button type="button" class="segmented-btn category-btn ${c.id === selected ? 'active' : ''}" data-value="${c.id}">
-      <span class="seg-icon">${c.icon}</span>${c.label}
+    <button type="button" class="ios-chip category-btn ${c.id === selected ? 'active' : ''}" data-value="${c.id}">
+      <span class="chip-dot" style="background:${c.id === selected ? '#fff' : c.color}"></span>${c.label}
     </button>
   `).join('');
 }
@@ -199,41 +210,43 @@ function renderExpenseFormScreen(editId = null) {
   const selectedCategory = existing?.category || 'other';
 
   container.innerHTML = `
-    <div class="screen-header">
-      <h2>${existing ? '지출 수정' : '지출 추가'}</h2>
-      <button type="button" class="btn-close" id="btn-close-expense-form">✕</button>
+    <div class="ios-header">
+      <h1 class="ios-large-title">${existing ? '지출 수정' : '지출 추가'}</h1>
+      <button type="button" class="ios-header-link" id="btn-close-expense-form">취소</button>
     </div>
 
     ${existing ? '' : `
-      <button type="button" class="btn-receipt" id="btn-scan-receipt">📷 영수증으로 등록</button>
+      <button type="button" class="btn-receipt" id="btn-scan-receipt">${ICON_CAMERA} 영수증으로 등록</button>
       <input type="file" id="input-receipt-photo" accept="image/*" capture="environment" style="display:none">
       <p class="ocr-status" id="ocr-status" style="display:none"></p>
     `}
 
     <div class="card-section">
-      <form id="expense-form">
-        <input type="hidden" id="input-expense-id" value="${existing ? existing.id : ''}">
-        <input type="hidden" id="input-expense-currency" value="${selectedCurrency}">
-        <input type="hidden" id="input-expense-category" value="${selectedCategory}">
+      <div class="card-section-pad">
+        <form id="expense-form">
+          <input type="hidden" id="input-expense-id" value="${existing ? existing.id : ''}">
+          <input type="hidden" id="input-expense-currency" value="${selectedCurrency}">
+          <input type="hidden" id="input-expense-category" value="${selectedCategory}">
 
-        <label class="field-label" for="input-expense-date">날짜</label>
-        <input type="date" id="input-expense-date" value="${existing ? existing.date : today}" required>
+          <label class="field-label" style="margin-top:0" for="input-expense-date">날짜</label>
+          <input type="date" id="input-expense-date" value="${existing ? existing.date : today}" required>
 
-        <label class="field-label">통화</label>
-        <div class="segmented" id="currency-segmented">${currencySegmentedHtml(selectedCurrency)}</div>
+          <label class="field-label">통화</label>
+          <div class="ios-segment" id="currency-segmented">${currencySegmentedHtml(selectedCurrency)}</div>
 
-        <label class="field-label" for="input-expense-amount">금액</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
+          <label class="field-label" for="input-expense-amount">금액</label>
+          <input type="text" inputmode="decimal" class="input-money" id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
 
-        <label class="field-label">카테고리</label>
-        <div class="segmented" id="category-segmented">${categorySegmentedHtml(selectedCategory)}</div>
+          <label class="field-label">카테고리</label>
+          <div class="ios-chip-row" id="category-segmented">${categorySegmentedHtml(selectedCategory)}</div>
 
-        <label class="field-label" for="input-expense-memo">메모</label>
-        <input type="text" id="input-expense-memo" value="${existing ? escapeHtml(existing.memo || '') : ''}" placeholder="예: 팟타이 점심">
+          <label class="field-label" for="input-expense-memo">메모</label>
+          <input type="text" id="input-expense-memo" value="${existing ? escapeHtml(existing.memo || '') : ''}" placeholder="예: 팟타이 점심">
 
-        <button type="submit" class="btn-primary">저장</button>
-        ${existing ? '<button type="button" id="btn-delete-expense" class="btn-danger">삭제</button>' : ''}
-      </form>
+          <button type="submit" class="btn-primary">저장</button>
+          ${existing ? '<button type="button" id="btn-delete-expense" class="btn-danger">삭제</button>' : ''}
+        </form>
+      </div>
     </div>
     <p id="expense-form-message" class="banner-info banner-error" style="display:none"></p>
   `;
@@ -243,12 +256,15 @@ function renderExpenseListScreen() {
   const expenses = [...getExpenses()].sort((a, b) => b.date.localeCompare(a.date));
   const container = document.getElementById('screen-expense-list');
   container.innerHTML = `
-    <h2>지출 목록</h2>
+    <div class="ios-header">
+      <h1 class="ios-large-title">지출 목록</h1>
+      <button type="button" class="ios-header-action" id="btn-add-expense" aria-label="지출 추가">${ICON_PLUS}</button>
+    </div>
     ${expenses.length
-      ? expenses.map(e => expenseCardHtml(e)).join('')
+      ? `<div class="card-section">${expenses.map(e => expenseCardHtml(e)).join('')}</div>`
       : `<div class="empty-state">
-          <div class="empty-icon">🧾</div>
-          <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 아래 + 버튼으로 첫 지출을 기록해보세요.</div>
+          <div class="empty-icon">${ICON_RECEIPT}</div>
+          <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 위 + 버튼으로 첫 지출을 기록해보세요.</div>
         </div>`}
   `;
 }

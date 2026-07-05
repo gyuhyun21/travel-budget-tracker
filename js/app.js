@@ -4,7 +4,6 @@ function showScreen(name) {
   document.getElementById(`screen-${name}`).classList.add('active');
   const navBtn = document.querySelector(`.nav-btn[data-screen="${name}"]`);
   if (navBtn) navBtn.classList.add('active');
-  document.getElementById('fab-add-expense').style.display = (name === 'add-expense' || name === 'settings') ? 'none' : 'flex';
   if (name === 'settings') renderSettingsScreen();
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
@@ -34,11 +33,24 @@ function bindSettingsForm() {
   });
 }
 
-function setActiveSegment(groupEl, hiddenInput, value) {
-  hiddenInput.value = value;
-  groupEl.querySelectorAll('.segmented-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === value);
+function setActiveCurrency(value) {
+  const group = document.getElementById('currency-segmented');
+  const buttons = [...group.querySelectorAll('.currency-btn')];
+  const index = Math.max(0, buttons.findIndex(b => b.dataset.value === value));
+  buttons.forEach((b, i) => b.classList.toggle('active', i === index));
+  group.querySelector('.ios-segment-thumb').style.setProperty('--index', index);
+  document.getElementById('input-expense-currency').value = value;
+}
+
+function setActiveCategory(value) {
+  const group = document.getElementById('category-segmented');
+  group.querySelectorAll('.category-btn').forEach(btn => {
+    const isActive = btn.dataset.value === value;
+    btn.classList.toggle('active', isActive);
+    const cat = getCategoryById(btn.dataset.value);
+    btn.querySelector('.chip-dot').style.background = isActive ? '#fff' : cat.color;
   });
+  document.getElementById('input-expense-category').value = value;
 }
 
 function bindExpenseForm() {
@@ -85,21 +97,13 @@ function bindExpenseForm() {
 
     const currencyBtn = e.target.closest('.currency-btn');
     if (currencyBtn) {
-      setActiveSegment(
-        document.getElementById('currency-segmented'),
-        document.getElementById('input-expense-currency'),
-        currencyBtn.dataset.value
-      );
+      setActiveCurrency(currencyBtn.dataset.value);
       return;
     }
 
     const categoryBtn = e.target.closest('.category-btn');
     if (categoryBtn) {
-      setActiveSegment(
-        document.getElementById('category-segmented'),
-        document.getElementById('input-expense-category'),
-        categoryBtn.dataset.value
-      );
+      setActiveCategory(categoryBtn.dataset.value);
       return;
     }
 
@@ -135,11 +139,7 @@ function bindExpenseForm() {
       if (guessedMemo) {
         document.getElementById('input-expense-memo').value = guessedMemo;
       }
-      setActiveSegment(
-        document.getElementById('category-segmented'),
-        document.getElementById('input-expense-category'),
-        guessedCategory
-      );
+      setActiveCategory(guessedCategory);
       statusEl.textContent = '인식 완료! 내용을 확인하고 저장해주세요.';
     } catch (err) {
       statusEl.textContent = '영수증 인식에 실패했습니다. 직접 입력해주세요.';
@@ -153,7 +153,13 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => showScreen(btn.dataset.screen));
 });
 
-document.getElementById('fab-add-expense').addEventListener('click', () => showScreen('add-expense'));
+function bindAddExpenseButtons() {
+  ['screen-dashboard', 'screen-expense-list'].forEach(id => {
+    document.getElementById(id).addEventListener('click', (e) => {
+      if (e.target.closest('#btn-add-expense')) showScreen('add-expense');
+    });
+  });
+}
 
 function bindExpenseList() {
   document.getElementById('screen-expense-list').addEventListener('click', (e) => {
@@ -174,7 +180,8 @@ function bindBackupButtons() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chiangmai-budget-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const slug = (data.settings?.tripName || 'budget').trim().replace(/[^\p{L}\p{N}]+/gu, '-');
+    a.download = `${slug}-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -216,6 +223,7 @@ function bindBackupButtons() {
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
+bindAddExpenseButtons();
 bindBackupButtons();
 
 if (!getSettings()) {
