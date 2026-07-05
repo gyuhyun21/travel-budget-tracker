@@ -2,7 +2,9 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
-  document.querySelector(`.nav-btn[data-screen="${name}"]`).classList.add('active');
+  const navBtn = document.querySelector(`.nav-btn[data-screen="${name}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  document.getElementById('fab-add-expense').style.display = (name === 'add-expense' || name === 'settings') ? 'none' : 'flex';
   if (name === 'settings') renderSettingsScreen();
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
@@ -21,7 +23,16 @@ function bindSettingsForm() {
       tripEndDate: document.getElementById('input-trip-end').value
     };
     saveSettings(settings);
-    document.getElementById('settings-message').textContent = '저장되었습니다.';
+    const message = document.getElementById('settings-message');
+    message.textContent = '저장되었습니다.';
+    message.style.display = 'block';
+  });
+}
+
+function setActiveSegment(groupEl, hiddenInput, value) {
+  hiddenInput.value = value;
+  groupEl.querySelectorAll('.segmented-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
   });
 }
 
@@ -36,13 +47,16 @@ function bindExpenseForm() {
     const date = document.getElementById('input-expense-date').value;
     const currency = document.getElementById('input-expense-currency').value;
     const amount = Number(document.getElementById('input-expense-amount').value);
+    const category = document.getElementById('input-expense-category').value;
     const memo = document.getElementById('input-expense-memo').value;
     const krwAmount = toKRW(amount, currency, settings);
+    const messageEl = document.getElementById('expense-form-message');
     if (krwAmount === null) {
-      document.getElementById('expense-form-message').textContent = '환율이 설정되지 않았습니다. 설정 화면에서 환율을 입력해주세요.';
+      messageEl.textContent = '환율이 설정되지 않았습니다. 설정 화면에서 환율을 입력해주세요.';
+      messageEl.style.display = 'block';
       return;
     }
-    const expenseData = { date, currency, amount, krwAmount, memo };
+    const expenseData = { date, currency, amount, krwAmount, category, memo };
     if (id) {
       updateExpense(id, expenseData);
     } else {
@@ -51,11 +65,75 @@ function bindExpenseForm() {
     showScreen('dashboard');
   });
 
-  container.addEventListener('click', (e) => {
+  container.addEventListener('click', async (e) => {
     if (e.target.id === 'btn-delete-expense') {
       const id = document.getElementById('input-expense-id').value;
       deleteExpense(id);
       showScreen('dashboard');
+      return;
+    }
+
+    if (e.target.id === 'btn-close-expense-form') {
+      showScreen('dashboard');
+      return;
+    }
+
+    const currencyBtn = e.target.closest('.currency-btn');
+    if (currencyBtn) {
+      setActiveSegment(
+        document.getElementById('currency-segmented'),
+        document.getElementById('input-expense-currency'),
+        currencyBtn.dataset.value
+      );
+      return;
+    }
+
+    const categoryBtn = e.target.closest('.category-btn');
+    if (categoryBtn) {
+      setActiveSegment(
+        document.getElementById('category-segmented'),
+        document.getElementById('input-expense-category'),
+        categoryBtn.dataset.value
+      );
+      return;
+    }
+
+    if (e.target.id === 'btn-scan-receipt') {
+      document.getElementById('input-receipt-photo').click();
+    }
+  });
+
+  container.addEventListener('change', async (e) => {
+    if (e.target.id !== 'input-receipt-photo') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('ocr-status');
+    statusEl.style.display = 'block';
+    statusEl.textContent = '영수증 인식 준비 중...';
+    try {
+      const text = await recognizeReceiptImage(file, (pct) => {
+        statusEl.textContent = `영수증 인식 중... ${pct}%`;
+      });
+      const guessedAmount = guessAmountFromText(text);
+      const guessedMemo = guessMemoFromText(text);
+      const guessedCategory = guessCategoryFromText(text);
+
+      if (guessedAmount !== null) {
+        document.getElementById('input-expense-amount').value = guessedAmount;
+      }
+      if (guessedMemo) {
+        document.getElementById('input-expense-memo').value = guessedMemo;
+      }
+      setActiveSegment(
+        document.getElementById('category-segmented'),
+        document.getElementById('input-expense-category'),
+        guessedCategory
+      );
+      statusEl.textContent = '인식 완료! 내용을 확인하고 저장해주세요.';
+    } catch (err) {
+      statusEl.textContent = '영수증 인식에 실패했습니다. 직접 입력해주세요.';
+    } finally {
+      e.target.value = '';
     }
   });
 }
@@ -63,6 +141,8 @@ function bindExpenseForm() {
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => showScreen(btn.dataset.screen));
 });
+
+document.getElementById('fab-add-expense').addEventListener('click', () => showScreen('add-expense'));
 
 function bindExpenseList() {
   document.getElementById('screen-expense-list').addEventListener('click', (e) => {
@@ -94,6 +174,7 @@ function bindBackupButtons() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      const message = document.getElementById('settings-message');
       try {
         const data = JSON.parse(reader.result);
         if (!data.settings || !Array.isArray(data.expenses)) {
@@ -104,7 +185,9 @@ function bindBackupButtons() {
         saveExpenses(data.expenses);
         renderSettingsScreen();
         renderDashboardScreen();
-        document.getElementById('settings-message').textContent = '복원되었습니다.';
+        const restored = document.getElementById('settings-message');
+        restored.textContent = '복원되었습니다.';
+        restored.style.display = 'block';
       } catch (err) {
         alert('올바르지 않은 백업 파일입니다.');
       } finally {

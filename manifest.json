@@ -3,8 +3,8 @@
   "short_name": "치앙마이가계부",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f7f7f5",
-  "theme_color": "#2d6a4f",
+  "background_color": "#FAF7F2",
+  "theme_color": "#E8622C",
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
