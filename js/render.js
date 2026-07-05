@@ -9,6 +9,16 @@ function escapeHtml(str) {
   return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Shrinks a money label's font size in steps as its text gets longer, so
+// large amounts (e.g. eight-digit budgets) stay inside their fixed-width
+// container instead of overflowing it.
+function fitFontSize(text, thresholds) {
+  for (const [maxLen, size] of thresholds) {
+    if (text.length <= maxLen) return `${size}px`;
+  }
+  return `${thresholds[thresholds.length - 1][1]}px`;
+}
+
 function renderSettingsScreen() {
   const settings = getSettings() || {};
   const isFirstRun = Object.keys(settings).length === 0;
@@ -26,10 +36,12 @@ function renderSettingsScreen() {
         <input type="text" inputmode="decimal" class="input-money" id="input-total-budget" value="${formatMoneyValue(settings.totalBudget)}" required>
 
         <label class="field-label" for="input-thb-rate">1바트(THB) = ? 원</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate)}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate ?? DEFAULT_THB_RATE)}" required>
+        ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
 
         <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
-        <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate)}" required>
+        <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate ?? DEFAULT_USD_RATE)}" required>
+        ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
 
         <label class="field-label" for="input-trip-start">시작일</label>
         <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
@@ -87,13 +99,19 @@ function renderDashboardScreen() {
     .sort((a, b) => b.amount - a.amount);
   const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
 
+  const ringAmountText = `${Math.abs(remaining).toLocaleString()}원`;
+  const ringFontSize = fitFontSize(ringAmountText, [[8, 26], [10, 22], [12, 19], [15, 16]]);
+  const totalBudgetText = `${settings.totalBudget.toLocaleString()}원`;
+  const totalSpentText = `${Math.round(totalSpent).toLocaleString()}원`;
+  const statFontSize = (text) => fitFontSize(text, [[10, 16.5], [12, 14], [15, 12]]);
+
   container.innerHTML = `
     <h2>${tripName ? escapeHtml(tripName) : '대시보드'}</h2>
     <p class="trip-pill">${tripLabel}</p>
 
     <div class="budget-ring" style="--pct:${percent}; --ring-color:${ringColor}">
       <div class="budget-ring-inner">
-        <div class="ring-amount">${Math.abs(remaining).toLocaleString()}원</div>
+        <div class="ring-amount" style="font-size:${ringFontSize}">${ringAmountText}</div>
         <div class="ring-label">${overBudget ? '예산 초과' : '남음'}</div>
         <div class="ring-pct">${percent}% 사용</div>
       </div>
@@ -102,11 +120,11 @@ function renderDashboardScreen() {
     <div class="stat-row">
       <div class="stat-chip">
         <div class="stat-label">총 예산</div>
-        <div class="stat-value">${settings.totalBudget.toLocaleString()}원</div>
+        <div class="stat-value" style="font-size:${statFontSize(totalBudgetText)}">${totalBudgetText}</div>
       </div>
       <div class="stat-chip">
         <div class="stat-label">총 지출</div>
-        <div class="stat-value">${Math.round(totalSpent).toLocaleString()}원</div>
+        <div class="stat-value" style="font-size:${statFontSize(totalSpentText)}">${totalSpentText}</div>
       </div>
     </div>
 

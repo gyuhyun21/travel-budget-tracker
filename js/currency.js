@@ -1,3 +1,8 @@
+// Approximate reference rates shown as a first-run starting point only —
+// the settings screen always asks the user to confirm/adjust them.
+const DEFAULT_THB_RATE = 39;
+const DEFAULT_USD_RATE = 1380;
+
 function formatMoneyValue(n) {
   if (n === undefined || n === null || n === '') return '';
   const num = Number(n);

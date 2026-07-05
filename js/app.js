@@ -26,9 +26,7 @@ function bindSettingsForm() {
       tripEndDate: document.getElementById('input-trip-end').value
     };
     saveSettings(settings);
-    const message = document.getElementById('settings-message');
-    message.textContent = '저장되었습니다.';
-    message.style.display = 'block';
+    showScreen('dashboard');
   });
 
   container.addEventListener('input', (e) => {
