@@ -6,6 +6,7 @@ function showScreen(name) {
   if (name === 'settings') renderSettingsScreen();
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
+  if (name === 'expense-list') renderExpenseListScreen();
 }
 
 function bindSettingsForm() {
@@ -63,8 +64,18 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => showScreen(btn.dataset.screen));
 });
 
+function bindExpenseList() {
+  document.getElementById('screen-expense-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('.expense-item');
+    if (!btn) return;
+    showScreen('add-expense');
+    renderExpenseFormScreen(btn.dataset.id);
+  });
+}
+
 bindSettingsForm();
 bindExpenseForm();
+bindExpenseList();
 
 if (!getSettings()) {
   showScreen('settings');

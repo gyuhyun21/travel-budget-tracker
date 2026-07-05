@@ -95,3 +95,22 @@ function renderExpenseFormScreen(editId = null) {
     <p id="expense-form-message"></p>
   `;
 }
+
+function renderExpenseListScreen() {
+  const expenses = [...getExpenses()].sort((a, b) => b.date.localeCompare(a.date));
+  const container = document.getElementById('screen-expense-list');
+  container.innerHTML = `
+    <h2>지출 목록</h2>
+    <ul id="expense-list">
+      ${expenses.length
+        ? expenses.map(e => `
+          <li>
+            <button class="expense-item" type="button" data-id="${e.id}">
+              ${e.date} · ${e.amount.toLocaleString()} ${e.currency} (${Math.round(e.krwAmount).toLocaleString()}원) - ${e.memo || ''}
+            </button>
+          </li>
+        `).join('')
+        : '<li>지출 내역이 없습니다.</li>'}
+    </ul>
+  `;
+}
