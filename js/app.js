@@ -73,9 +73,50 @@ function bindExpenseList() {
   });
 }
 
+function bindBackupButtons() {
+  const container = document.getElementById('screen-settings');
+
+  container.addEventListener('click', (e) => {
+    if (e.target.id !== 'btn-export') return;
+    const data = { settings: getSettings(), expenses: getExpenses() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chiangmai-budget-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'input-import') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.settings || !Array.isArray(data.expenses)) {
+          throw new Error('invalid format');
+        }
+        if (!confirm('기존 데이터를 덮어씁니다. 계속할까요?')) return;
+        saveSettings(data.settings);
+        saveExpenses(data.expenses);
+        renderSettingsScreen();
+        renderDashboardScreen();
+        document.getElementById('settings-message').textContent = '복원되었습니다.';
+      } catch (err) {
+        alert('올바르지 않은 백업 파일입니다.');
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
+bindBackupButtons();
 
 if (!getSettings()) {
   showScreen('settings');
