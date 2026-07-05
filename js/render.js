@@ -64,3 +64,34 @@ function renderDashboardScreen() {
     </ul>
   `;
 }
+
+function renderExpenseFormScreen(editId = null) {
+  const container = document.getElementById('screen-add-expense');
+  const existing = editId ? getExpenseById(editId) : null;
+  const today = new Date().toISOString().slice(0, 10);
+  container.innerHTML = `
+    <h2>${existing ? '지출 수정' : '지출 추가'}</h2>
+    <form id="expense-form">
+      <input type="hidden" id="input-expense-id" value="${existing ? existing.id : ''}">
+      <label>날짜
+        <input type="date" id="input-expense-date" value="${existing ? existing.date : today}" required>
+      </label>
+      <label>통화
+        <select id="input-expense-currency">
+          <option value="THB" ${existing?.currency === 'THB' ? 'selected' : ''}>THB (바트)</option>
+          <option value="USD" ${existing?.currency === 'USD' ? 'selected' : ''}>USD (달러)</option>
+          <option value="KRW" ${existing?.currency === 'KRW' ? 'selected' : ''}>KRW (원)</option>
+        </select>
+      </label>
+      <label>금액
+        <input type="number" id="input-expense-amount" value="${existing ? existing.amount : ''}" required>
+      </label>
+      <label>메모
+        <input type="text" id="input-expense-memo" value="${existing ? (existing.memo || '') : ''}">
+      </label>
+      <button type="submit">저장</button>
+      ${existing ? '<button type="button" id="btn-delete-expense">삭제</button>' : ''}
+    </form>
+    <p id="expense-form-message"></p>
+  `;
+}
