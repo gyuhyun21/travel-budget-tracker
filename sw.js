@@ -1,10 +1,11 @@
 // Bump this (e.g. to 'cmb-cache-v2') whenever any file listed in ASSETS changes,
 // otherwise the service worker will keep serving stale cached files indefinitely.
-const CACHE_NAME = 'cmb-cache-v15';
+const CACHE_NAME = 'cmb-cache-v16';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './fonts/PretendardVariable.woff2',
   './js/firebase-init.js',
   './js/sync.js',
   './js/storage.js',

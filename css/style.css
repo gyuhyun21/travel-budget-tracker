@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: local('Pretendard Variable'), url('../fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 :root {
@@ -24,7 +32,7 @@ html, body { height: 100%; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   background: var(--color-bg);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
