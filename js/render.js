@@ -24,6 +24,25 @@ function fitFontSize(text, thresholds) {
   return `${thresholds[thresholds.length - 1][1]}px`;
 }
 
+function renderShareSectionBody() {
+  if (isSharedMode()) {
+    const link = shareUrlForTrip(getSharedTripId());
+    return `
+      <span class="share-badge"><span class="dot"></span>실시간 공유 중</span>
+      <p class="field-hint" style="margin:0 0 10px">이 링크가 있는 사람은 누구나 같이 보고 편집할 수 있어요.</p>
+      <div class="share-link-box">
+        <span>${escapeHtml(link)}</span>
+        <button type="button" id="btn-copy-share-link" data-link="${escapeHtml(link)}">복사</button>
+      </div>
+      <button type="button" id="btn-stop-sharing" class="btn-danger">공유 중지 (이 기기만 로컬로 전환)</button>
+    `;
+  }
+  return `
+    <p class="field-hint" style="margin:0 0 12px">링크를 만들어서 같이 여행하는 사람과 예산/지출을 실시간으로 같이 보고 편집할 수 있어요.</p>
+    <button type="button" id="btn-start-sharing" class="btn-primary" style="margin-top:0">이 여행 공유하기</button>
+  `;
+}
+
 function renderSettingsScreen() {
   const settings = getSettings() || {};
   const isFirstRun = Object.keys(settings).length === 0;
@@ -60,6 +79,15 @@ function renderSettingsScreen() {
         </form>
       </div>
     </div>
+
+    ${isFirstRun ? '' : `
+      <h3 class="section-title">공유</h3>
+      <div class="card-section">
+        <div class="card-section-pad">
+          ${renderShareSectionBody()}
+        </div>
+      </div>
+    `}
 
     <h3 class="section-title">데이터 백업</h3>
     <div class="card-section">

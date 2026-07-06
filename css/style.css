@@ -493,6 +493,81 @@ input::placeholder { color: #AEAEB2; }
 
 hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 0; }
 
+/* ---------- Shared-trip sync ---------- */
+
+.sync-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--color-ink-soft);
+  font-size: 14px;
+}
+.sync-loading-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--color-fill);
+  border-top-color: var(--color-primary);
+  animation: sync-spin 0.7s linear infinite;
+}
+@keyframes sync-spin { to { transform: rotate(360deg); } }
+
+.share-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-success-soft);
+  color: #1F8A3E;
+  font-size: 12px;
+  font-weight: 590;
+  padding: 5px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.share-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34C759;
+}
+
+.share-link-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-fill);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.share-link-box span {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.share-link-box button {
+  flex-shrink: 0;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 590;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 /* ---------- Date range picker sheet ---------- */
 
 .dp-overlay {

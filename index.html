@@ -24,6 +24,11 @@
     </section>
   </main>
 
+  <div id="sync-loading" class="sync-loading-overlay" style="display:none">
+    <div class="sync-loading-spinner"></div>
+    <p>같이 보는 여행 불러오는 중...</p>
+  </div>
+
   <div id="daterange-sheet" class="dp-overlay" style="display:none">
     <div class="dp-sheet">
       <div class="dp-sheet-header">
@@ -47,6 +52,8 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <script type="module" src="js/firebase-init.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/currency.js"></script>
   <script src="js/trip.js"></script>

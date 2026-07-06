@@ -41,8 +41,44 @@ function bindSettingsForm() {
     if (e.target.classList.contains('input-money')) formatMoneyInput(e.target);
   });
 
-  container.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-open-daterange')) openDateRangeSheet();
+  container.addEventListener('click', async (e) => {
+    if (e.target.closest('#btn-open-daterange')) {
+      openDateRangeSheet();
+      return;
+    }
+
+    if (e.target.id === 'btn-start-sharing') {
+      e.target.disabled = true;
+      e.target.textContent = '공유 링크 만드는 중...';
+      try {
+        await enableSharingForCurrentData();
+        renderSettingsScreen();
+      } catch (err) {
+        alert('공유 링크를 만들지 못했습니다. 네트워크 연결을 확인해주세요.');
+        e.target.disabled = false;
+        e.target.textContent = '이 여행 공유하기';
+      }
+      return;
+    }
+
+    if (e.target.id === 'btn-copy-share-link') {
+      const link = e.target.dataset.link;
+      try {
+        await navigator.clipboard.writeText(link);
+        const original = e.target.textContent;
+        e.target.textContent = '복사됨!';
+        setTimeout(() => { e.target.textContent = original; }, 1500);
+      } catch (err) {
+        prompt('아래 링크를 복사하세요:', link);
+      }
+      return;
+    }
+
+    if (e.target.id === 'btn-stop-sharing') {
+      if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
+      disableSharing();
+      renderSettingsScreen();
+    }
   });
 }
 
@@ -324,11 +360,25 @@ bindBackupButtons();
 bindResetButton();
 bindDateRangeSheet();
 
-if (!getSettings()) {
-  showScreen('settings');
-} else {
-  showScreen('dashboard');
+function boot() {
+  if (initSharedModeFromUrl()) {
+    document.getElementById('sync-loading').style.display = 'flex';
+    startSharedSync(
+      () => {
+        document.getElementById('sync-loading').style.display = 'none';
+        showScreen(getSettings() ? 'dashboard' : 'settings');
+      },
+      () => {
+        renderDashboardScreen();
+        renderExpenseListScreen();
+      }
+    );
+    return;
+  }
+  showScreen(getSettings() ? 'dashboard' : 'settings');
 }
+
+boot();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
