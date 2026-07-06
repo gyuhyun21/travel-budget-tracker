@@ -2,6 +2,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'cmb_settings',
   EXPENSES: 'cmb_expenses',
   MEALS: 'cmb_meals',
+  PACKING_ITEMS: 'cmb_packing_items',
   TRIP_ID: 'cmb_shared_trip_id'
 };
 
@@ -25,6 +26,7 @@ let sharedTripId = null;
 let cachedSettings = null;
 let cachedExpenses = [];
 let cachedMeals = [];
+let cachedPackingItems = [];
 
 function isSharedMode() {
   return !!sharedTripId;
@@ -62,14 +64,16 @@ function startSharedSync(onReady, onUpdate) {
   let settingsSeen = false;
   let expensesSeen = false;
   let mealsSeen = false;
+  let packingSeen = false;
   const maybeReady = () => {
     if (initialSyncDone) { onUpdate(); return; }
-    if (settingsSeen && expensesSeen && mealsSeen) { initialSyncDone = true; onReady(); }
+    if (settingsSeen && expensesSeen && mealsSeen && packingSeen) { initialSyncDone = true; onReady(); }
   };
   subscribeToTrip(sharedTripId, {
     onSettings: (settings) => { cachedSettings = settings; settingsSeen = true; maybeReady(); },
     onExpenses: (expenses) => { cachedExpenses = expenses; expensesSeen = true; maybeReady(); },
-    onMeals: (meals) => { cachedMeals = meals; mealsSeen = true; maybeReady(); }
+    onMeals: (meals) => { cachedMeals = meals; mealsSeen = true; maybeReady(); },
+    onPackingItems: (items) => { cachedPackingItems = items; packingSeen = true; maybeReady(); }
   });
 }
 
@@ -80,7 +84,8 @@ async function enableSharingForCurrentData() {
   const settings = getSettings();
   const expenses = getExpenses();
   const meals = getMeals();
-  const tripId = await fsCreateTrip(settings, expenses, meals);
+  const packingItems = getPackingItems();
+  const tripId = await fsCreateTrip(settings, expenses, meals, packingItems);
   sharedTripId = tripId;
   initialSyncDone = true;
   localStorage.setItem(STORAGE_KEYS.TRIP_ID, tripId);
@@ -90,10 +95,12 @@ async function enableSharingForCurrentData() {
   cachedSettings = settings;
   cachedExpenses = expenses;
   cachedMeals = meals;
+  cachedPackingItems = packingItems;
   startSharedSync(() => {}, () => {
     renderDashboardScreen();
     renderExpenseListScreen();
     renderMealPlanScreen();
+    renderPackingScreen();
   });
   return shareUrlForTrip(tripId);
 }
@@ -105,6 +112,7 @@ function disableSharing() {
   const settings = cachedSettings;
   const expenses = cachedExpenses;
   const meals = cachedMeals;
+  const packingItems = cachedPackingItems;
   unsubscribeFromTrip();
   sharedTripId = null;
   initialSyncDone = false;
@@ -112,6 +120,7 @@ function disableSharing() {
   if (settings) localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
   localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(meals));
+  localStorage.setItem(STORAGE_KEYS.PACKING_ITEMS, JSON.stringify(packingItems));
 }
 
 function getSettings() {
@@ -220,9 +229,65 @@ function deleteMeal(id) {
   saveMeals(meals);
 }
 
+function getPackingItems() {
+  if (isSharedMode()) return cachedPackingItems;
+  const raw = localStorage.getItem(STORAGE_KEYS.PACKING_ITEMS);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function savePackingItems(items) {
+  localStorage.setItem(STORAGE_KEYS.PACKING_ITEMS, JSON.stringify(items));
+}
+
+function addPackingItem(item) {
+  const newItem = { checked: false, ...item, id: generateId() };
+  if (isSharedMode()) {
+    cachedPackingItems = [...cachedPackingItems, newItem];
+    const { id, ...data } = newItem;
+    fsSetPackingItem(sharedTripId, id, data);
+    return newItem;
+  }
+  const items = getPackingItems();
+  items.push(newItem);
+  savePackingItems(items);
+  return newItem;
+}
+
+function updatePackingItem(id, updatedFields) {
+  if (isSharedMode()) {
+    const index = cachedPackingItems.findIndex(i => i.id === id);
+    if (index === -1) return null;
+    const updated = { ...cachedPackingItems[index], ...updatedFields };
+    cachedPackingItems = [...cachedPackingItems.slice(0, index), updated, ...cachedPackingItems.slice(index + 1)];
+    fsUpdatePackingItem(sharedTripId, id, updatedFields);
+    return updated;
+  }
+  const items = getPackingItems();
+  const index = items.findIndex(i => i.id === id);
+  if (index === -1) return null;
+  items[index] = { ...items[index], ...updatedFields };
+  savePackingItems(items);
+  return items[index];
+}
+
+function deletePackingItem(id) {
+  if (isSharedMode()) {
+    cachedPackingItems = cachedPackingItems.filter(i => i.id !== id);
+    fsDeletePackingItem(sharedTripId, id);
+    return;
+  }
+  const items = getPackingItems().filter(i => i.id !== id);
+  savePackingItems(items);
+}
+
+function getPackingItemById(id) {
+  return getPackingItems().find(i => i.id === id) || null;
+}
+
 function resetAllData() {
   if (isSharedMode()) disableSharing();
   localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   localStorage.removeItem(STORAGE_KEYS.EXPENSES);
   localStorage.removeItem(STORAGE_KEYS.MEALS);
+  localStorage.removeItem(STORAGE_KEYS.PACKING_ITEMS);
 }

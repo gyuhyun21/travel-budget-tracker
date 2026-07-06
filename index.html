@@ -22,6 +22,9 @@
     <section id="screen-meals" class="screen">
       <h2>뭐먹?</h2>
     </section>
+    <section id="screen-packing" class="screen">
+      <h2>준비물</h2>
+    </section>
     <section id="screen-settings" class="screen">
       <h2>설정</h2>
     </section>
@@ -63,6 +66,26 @@
     </div>
   </div>
 
+  <div id="packing-add-sheet" class="dp-overlay" style="display:none">
+    <div class="dp-sheet">
+      <div class="dp-sheet-header">
+        <span class="dp-title" id="packing-add-title">준비물 추가</span>
+        <button type="button" class="ios-header-link" id="packing-add-close">닫기</button>
+      </div>
+      <div id="packing-add-body"></div>
+    </div>
+  </div>
+
+  <div id="participant-sheet" class="dp-overlay" style="display:none">
+    <div class="dp-sheet">
+      <div class="dp-sheet-header">
+        <span class="dp-title">참여자 관리</span>
+        <button type="button" class="ios-header-link" id="participant-sheet-close">닫기</button>
+      </div>
+      <div id="participant-sheet-body"></div>
+    </div>
+  </div>
+
   <nav class="nav-bar">
     <button data-screen="dashboard" class="nav-btn active">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>대시보드
@@ -72,6 +95,9 @@
     </button>
     <button data-screen="meals" class="nav-btn">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 0 16 0"/><path d="M2 13h20"/><path d="M9 4c-.5 1-.5 2 0 3M12 3c-.5 1-.5 2 0 3M15 4c-.5 1-.5 2 0 3"/></svg></span>뭐먹?
+    </button>
+    <button data-screen="packing" class="nav-btn">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V5.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>준비물
     </button>
     <button data-screen="settings" class="nav-btn">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M4.9 4.9l1.55 1.55M17.55 17.55 19.1 19.1M3 12h2.2M18.8 12H21M4.9 19.1l1.55-1.55M17.55 6.45 19.1 4.9"/></svg></span>설정

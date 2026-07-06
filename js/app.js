@@ -9,6 +9,7 @@ function showScreen(name) {
   if (name === 'add-expense') renderExpenseFormScreen();
   if (name === 'expense-list') renderExpenseListScreen();
   if (name === 'meals') renderMealPlanScreen();
+  if (name === 'packing') renderPackingScreen();
 }
 
 function bindSettingsForm() {
@@ -35,6 +36,7 @@ function bindSettingsForm() {
       return;
     }
     const settings = {
+      ...(getSettings() || {}),
       tripName: document.getElementById('input-trip-name').value.trim(),
       totalBudget: parseMoneyInput(document.getElementById('input-total-budget').value),
       thbRate: parseMoneyInput(document.getElementById('input-thb-rate').value),
@@ -315,7 +317,7 @@ function bindBackupButtons() {
 
   container.addEventListener('click', (e) => {
     if (e.target.id !== 'btn-export') return;
-    const data = { settings: getSettings(), expenses: getExpenses(), meals: getMeals() };
+    const data = { settings: getSettings(), expenses: getExpenses(), meals: getMeals(), packingItems: getPackingItems() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -342,9 +344,11 @@ function bindBackupButtons() {
         saveSettings(data.settings);
         saveExpenses(data.expenses);
         saveMeals(Array.isArray(data.meals) ? data.meals : []);
+        savePackingItems(Array.isArray(data.packingItems) ? data.packingItems : []);
         renderSettingsScreen();
         renderDashboardScreen();
         renderMealPlanScreen();
+        renderPackingScreen();
         const restored = document.getElementById('settings-message');
         restored.textContent = '복원되었습니다.';
         restored.style.display = 'block';
@@ -488,6 +492,154 @@ function bindMealAddSheet() {
   });
 }
 
+function bindPackingScreen() {
+  document.getElementById('screen-packing').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-manage-participants')) {
+      openParticipantSheet();
+      return;
+    }
+
+    if (e.target.closest('#btn-add-packing-item')) {
+      openPackingAddSheet();
+      return;
+    }
+
+    const checkBtn = e.target.closest('.packing-check');
+    if (checkBtn) {
+      const item = getPackingItemById(checkBtn.dataset.id);
+      if (item) updatePackingItem(item.id, { checked: !item.checked });
+      renderPackingScreen();
+      return;
+    }
+
+    const itemBtn = e.target.closest('.packing-item-main');
+    if (itemBtn) {
+      openPackingAddSheet(itemBtn.dataset.id);
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.packing-delete-btn');
+    if (deleteBtn) {
+      if (!confirm('이 준비물을 삭제할까요?')) return;
+      deletePackingItem(deleteBtn.dataset.id);
+      renderPackingScreen();
+    }
+  });
+}
+
+let packingAddState = null;
+
+function openPackingAddSheet(id = null) {
+  const existing = id ? getPackingItemById(id) : null;
+  packingAddState = existing
+    ? { id: existing.id, name: existing.name, assignee: existing.assignee, memo: existing.memo }
+    : { id: null, name: '', assignee: null, memo: '' };
+  renderPackingAddSheetBody(packingAddState);
+  document.getElementById('packing-add-sheet').style.display = 'flex';
+}
+
+function closePackingAddSheet() {
+  document.getElementById('packing-add-sheet').style.display = 'none';
+  packingAddState = null;
+}
+
+function bindPackingAddSheet() {
+  const overlay = document.getElementById('packing-add-sheet');
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'packing-add-close') {
+      closePackingAddSheet();
+      return;
+    }
+
+    const assigneeBtn = e.target.closest('.packing-assignee-btn');
+    if (assigneeBtn) {
+      // Toggle the chip in place instead of re-rendering the whole sheet,
+      // so an already-typed name/memo doesn't get wiped by the fresh
+      // template (which only reflects packingAddState, not live input values).
+      const value = assigneeBtn.dataset.assignee;
+      packingAddState.assignee = value === UNASSIGNED_LABEL ? null : value;
+      document.querySelectorAll('.packing-assignee-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.assignee === value);
+      });
+      return;
+    }
+
+    if (e.target.id === 'btn-save-packing-item') {
+      const name = document.getElementById('input-packing-name').value.trim();
+      if (!name) {
+        alert('준비물 이름을 입력해주세요.');
+        return;
+      }
+      const memo = document.getElementById('input-packing-memo').value.trim();
+      const fields = { name, memo, assignee: packingAddState.assignee };
+      if (packingAddState.id) {
+        updatePackingItem(packingAddState.id, fields);
+      } else {
+        addPackingItem(fields);
+      }
+      closePackingAddSheet();
+      renderPackingScreen();
+      return;
+    }
+
+    if (e.target.id === 'btn-delete-packing-item') {
+      if (!confirm('이 준비물을 삭제할까요?')) return;
+      deletePackingItem(packingAddState.id);
+      closePackingAddSheet();
+      renderPackingScreen();
+    }
+  });
+}
+
+function openParticipantSheet() {
+  renderParticipantSheetBody();
+  document.getElementById('participant-sheet').style.display = 'flex';
+}
+
+function closeParticipantSheet() {
+  document.getElementById('participant-sheet').style.display = 'none';
+  renderPackingScreen();
+}
+
+function bindParticipantSheet() {
+  const overlay = document.getElementById('participant-sheet');
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'participant-sheet-close') {
+      closeParticipantSheet();
+      return;
+    }
+
+    const removeBtn = e.target.closest('.participant-remove-btn');
+    if (removeBtn) {
+      const settings = getSettings();
+      const participants = [...(settings.packingParticipants || [])];
+      const [removed] = participants.splice(Number(removeBtn.dataset.index), 1);
+      saveSettings({ ...settings, packingParticipants: participants });
+      // reassign that person's items to unassigned so nothing silently vanishes
+      getPackingItems().filter(i => i.assignee === removed).forEach(i => updatePackingItem(i.id, { assignee: null }));
+      renderParticipantSheetBody();
+      return;
+    }
+
+    if (e.target.id === 'btn-add-participant') {
+      const input = document.getElementById('input-new-participant');
+      const name = input.value.trim();
+      if (!name) return;
+      const settings = getSettings();
+      const participants = [...(settings.packingParticipants || [])];
+      if (participants.includes(name)) {
+        input.value = '';
+        return;
+      }
+      participants.push(name);
+      saveSettings({ ...settings, packingParticipants: participants });
+      renderParticipantSheetBody();
+    }
+  });
+}
+
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
@@ -498,6 +650,9 @@ bindResetButton();
 bindDateRangeSheet();
 bindMealPlanScreen();
 bindMealAddSheet();
+bindPackingScreen();
+bindPackingAddSheet();
+bindParticipantSheet();
 
 function showUsernamePrompt(onDone) {
   const overlay = document.getElementById('username-sheet');
@@ -531,6 +686,7 @@ function boot() {
         renderDashboardScreen();
         renderExpenseListScreen();
         renderMealPlanScreen();
+        renderPackingScreen();
       }
     );
     return;

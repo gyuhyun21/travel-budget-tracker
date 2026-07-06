@@ -1,6 +1,6 @@
 // Bump this (e.g. to 'cmb-cache-v2') whenever any file listed in ASSETS changes,
 // otherwise the service worker will keep serving stale cached files indefinitely.
-const CACHE_NAME = 'cmb-cache-v12';
+const CACHE_NAME = 'cmb-cache-v13';
 const ASSETS = [
   './',
   './index.html',

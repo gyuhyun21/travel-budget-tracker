@@ -505,3 +505,115 @@ function mealSearchResultsHtml(results) {
     </div>
   `;
 }
+
+const UNASSIGNED_LABEL = '미정';
+
+function renderPackingScreen() {
+  const settings = getSettings();
+  const container = document.getElementById('screen-packing');
+  const participants = settings?.packingParticipants || [];
+  const items = getPackingItems();
+  const doneCount = items.filter(i => i.checked).length;
+
+  container.innerHTML = `
+    <div class="ios-header"><h1 class="ios-large-title">준비물</h1></div>
+    ${items.length ? `<p class="trip-pill">${doneCount} / ${items.length} 준비완료</p>` : ''}
+
+    <div class="ios-chip-row" id="packing-participants-row" style="margin-bottom:14px">
+      ${participants.map(p => `<span class="ios-chip packing-participant-chip">${escapeHtml(p)}</span>`).join('')}
+      <button type="button" class="ios-chip" id="btn-manage-participants">${ICON_PLUS} 참여자 관리</button>
+    </div>
+
+    <button type="button" class="btn-primary btn-add-main" id="btn-add-packing-item">
+      <span class="btn-icon-inline">${ICON_PLUS}</span>준비물 추가
+    </button>
+
+    ${renderPackingGroups(participants, items)}
+  `;
+}
+
+function renderPackingGroups(participants, items) {
+  if (!items.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">${ICON_BAG}</div>
+        <div class="empty-text">아직 준비물이 없어요.<br>위의 + 준비물 추가 버튼으로 등록해보세요.</div>
+      </div>
+    `;
+  }
+  const groups = [...participants, UNASSIGNED_LABEL];
+  return groups.map(person => {
+    const personItems = items.filter(i => (i.assignee || UNASSIGNED_LABEL) === person);
+    if (!personItems.length) return '';
+    return `
+      <h3 class="section-title">${escapeHtml(person)}</h3>
+      <div class="card-section">
+        ${personItems.map(i => packingItemHtml(i)).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function packingItemHtml(item) {
+  return `
+    <div class="packing-item">
+      <button type="button" class="packing-check ${item.checked ? 'packing-check-done' : ''}" data-id="${item.id}" aria-label="완료 체크">${item.checked ? ICON_CHECK : ''}</button>
+      <button type="button" class="packing-item-main ${item.checked ? 'packing-item-done' : ''}" data-id="${item.id}">
+        <span class="packing-item-name">${escapeHtml(item.name)}</span>
+        ${item.memo ? `<span class="packing-item-memo">${escapeHtml(item.memo)}</span>` : ''}
+      </button>
+      <button type="button" class="packing-delete-btn" data-id="${item.id}" aria-label="삭제">✕</button>
+    </div>
+  `;
+}
+
+function packingAssigneeChipsHtml(participants, selected) {
+  const options = [UNASSIGNED_LABEL, ...participants];
+  return options.map(p => `
+    <button type="button" class="ios-chip packing-assignee-btn ${(selected || UNASSIGNED_LABEL) === p ? 'active' : ''}" data-assignee="${escapeHtml(p)}">${escapeHtml(p)}</button>
+  `).join('');
+}
+
+function renderPackingAddSheetBody(state) {
+  const settings = getSettings();
+  const participants = settings?.packingParticipants || [];
+  const container = document.getElementById('packing-add-body');
+  document.getElementById('packing-add-title').textContent = state.id ? '준비물 수정' : '준비물 추가';
+
+  container.innerHTML = `
+    <label class="field-label" style="margin-top:0" for="input-packing-name">준비물 이름</label>
+    <input type="text" id="input-packing-name" placeholder="예: 텐트, 버너" value="${escapeHtml(state.name ?? '')}">
+
+    <label class="field-label">담당자</label>
+    <div class="ios-chip-row" id="packing-assignee-picker">${packingAssigneeChipsHtml(participants, state.assignee)}</div>
+
+    <label class="field-label" for="input-packing-memo">메모 (선택)</label>
+    <input type="text" id="input-packing-memo" placeholder="예: 4인용" value="${escapeHtml(state.memo ?? '')}">
+
+    <button type="button" class="btn-primary" id="btn-save-packing-item">${state.id ? '수정' : '추가'}</button>
+    ${state.id ? '<button type="button" class="btn-danger" id="btn-delete-packing-item">삭제</button>' : ''}
+  `;
+}
+
+function renderParticipantSheetBody() {
+  const settings = getSettings();
+  const participants = settings?.packingParticipants || [];
+  const container = document.getElementById('participant-sheet-body');
+
+  container.innerHTML = `
+    ${participants.length ? `
+      <div class="participant-list">
+        ${participants.map((p, i) => `
+          <div class="participant-row">
+            <span>${escapeHtml(p)}</span>
+            <button type="button" class="participant-remove-btn" data-index="${i}" aria-label="삭제">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    ` : '<p class="field-hint" style="margin:0 0 12px">아직 참여자가 없어요.</p>'}
+
+    <label class="field-label" for="input-new-participant">이름 추가</label>
+    <input type="text" id="input-new-participant" placeholder="예: 규현" autocomplete="off">
+    <button type="button" class="btn-primary" id="btn-add-participant">추가</button>
+  `;
+}
