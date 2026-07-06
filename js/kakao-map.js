@@ -1,7 +1,7 @@
 // Replace with the "JavaScript" key from a Kakao Developers app (Product
 // settings > Platform > Web must whitelist this site's domain). Restaurant
 // search degrades to manual entry (no crash) until a real key is set.
-const KAKAO_JS_KEY = 'PLACEHOLDER_KAKAO_JS_KEY';
+const KAKAO_JS_KEY = 'f454469d0a29176898ad01c5ca6a853a';
 
 let kakaoReadyPromise = null;
 
