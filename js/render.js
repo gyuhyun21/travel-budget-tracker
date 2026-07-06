@@ -27,12 +27,15 @@ function fitFontSize(text, thresholds) {
 function renderShareSectionBody() {
   if (isSharedMode()) {
     const link = shareUrlForTrip(getSharedTripId());
+    const tripName = getSettings()?.tripName?.trim();
+    const shareTitle = tripName ? `${tripName} 가계부` : '여행 가계부';
+    const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
     return `
       <span class="share-badge"><span class="dot"></span>실시간 공유 중</span>
       <p class="field-hint" style="margin:0 0 10px">이 링크가 있는 사람은 누구나 같이 보고 편집할 수 있어요.</p>
       <div class="share-link-box">
         <span>${escapeHtml(link)}</span>
-        <button type="button" id="btn-copy-share-link" data-link="${escapeHtml(link)}">복사</button>
+        <button type="button" id="btn-copy-share-link" data-link="${escapeHtml(link)}" data-title="${escapeHtml(shareTitle)}">${canNativeShare ? '공유' : '복사'}</button>
       </div>
       <button type="button" id="btn-stop-sharing" class="btn-danger">공유 중지 (이 기기만 로컬로 전환)</button>
     `;

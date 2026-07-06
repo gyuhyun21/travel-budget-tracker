@@ -63,6 +63,15 @@ function bindSettingsForm() {
 
     if (e.target.id === 'btn-copy-share-link') {
       const link = e.target.dataset.link;
+      const title = e.target.dataset.title;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: `${title} 같이 보기`, url: link });
+        } catch (err) {
+          // user closed the share sheet without picking anything — not an error
+        }
+        return;
+      }
       try {
         await navigator.clipboard.writeText(link);
         const original = e.target.textContent;
