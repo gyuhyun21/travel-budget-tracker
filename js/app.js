@@ -16,13 +16,22 @@ function bindSettingsForm() {
   container.addEventListener('submit', (e) => {
     if (e.target.id !== 'settings-form') return;
     e.preventDefault();
+    const tripStartDate = document.getElementById('input-trip-start').value;
+    const tripEndDate = document.getElementById('input-trip-end').value;
+    const message = document.getElementById('settings-message');
+    if (!tripStartDate || !tripEndDate) {
+      message.textContent = '여행 기간을 선택해주세요.';
+      message.classList.add('banner-error');
+      message.style.display = 'block';
+      return;
+    }
     const settings = {
       tripName: document.getElementById('input-trip-name').value.trim(),
       totalBudget: parseMoneyInput(document.getElementById('input-total-budget').value),
       thbRate: parseMoneyInput(document.getElementById('input-thb-rate').value),
       usdRate: parseMoneyInput(document.getElementById('input-usd-rate').value),
-      tripStartDate: document.getElementById('input-trip-start').value,
-      tripEndDate: document.getElementById('input-trip-end').value
+      tripStartDate,
+      tripEndDate
     };
     saveSettings(settings);
     showScreen('dashboard');
@@ -30,6 +39,74 @@ function bindSettingsForm() {
 
   container.addEventListener('input', (e) => {
     if (e.target.classList.contains('input-money')) formatMoneyInput(e.target);
+  });
+
+  container.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-open-daterange')) openDateRangeSheet();
+  });
+}
+
+let dpState = null;
+
+function openDateRangeSheet() {
+  const existingStart = document.getElementById('input-trip-start').value;
+  const existingEnd = document.getElementById('input-trip-end').value;
+  const base = existingStart ? dpParseYmd(existingStart) : { year: new Date().getFullYear(), month: new Date().getMonth() };
+  dpState = { year: base.year, month: base.month, start: existingStart || null, end: existingEnd || null };
+  renderDateRangeSheet(dpState);
+  document.getElementById('daterange-sheet').style.display = 'flex';
+}
+
+function closeDateRangeSheet() {
+  document.getElementById('daterange-sheet').style.display = 'none';
+}
+
+function bindDateRangeSheet() {
+  const overlay = document.getElementById('daterange-sheet');
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'dp-close') {
+      closeDateRangeSheet();
+      return;
+    }
+
+    if (e.target.closest('#dp-prev')) {
+      dpState.month -= 1;
+      if (dpState.month < 0) { dpState.month = 11; dpState.year -= 1; }
+      renderDateRangeSheet(dpState);
+      return;
+    }
+
+    if (e.target.closest('#dp-next')) {
+      dpState.month += 1;
+      if (dpState.month > 11) { dpState.month = 0; dpState.year += 1; }
+      renderDateRangeSheet(dpState);
+      return;
+    }
+
+    const dayBtn = e.target.closest('.dp-day');
+    if (dayBtn) {
+      const dateStr = dayBtn.dataset.date;
+      if (!dpState.start || dpState.end) {
+        dpState.start = dateStr;
+        dpState.end = null;
+      } else if (dateStr < dpState.start) {
+        dpState.start = dateStr;
+        dpState.end = null;
+      } else {
+        dpState.end = dateStr;
+      }
+      renderDateRangeSheet(dpState);
+      return;
+    }
+
+    if (e.target.id === 'dp-confirm') {
+      if (!dpState.start || !dpState.end) return;
+      document.getElementById('input-trip-start').value = dpState.start;
+      document.getElementById('input-trip-end').value = dpState.end;
+      document.getElementById('date-range-display').textContent = dpFormatRange(dpState.start, dpState.end);
+      closeDateRangeSheet();
+    }
   });
 }
 
@@ -235,6 +312,7 @@ bindExpenseList();
 bindAddExpenseButtons();
 bindBackupButtons();
 bindResetButton();
+bindDateRangeSheet();
 
 if (!getSettings()) {
   showScreen('settings');

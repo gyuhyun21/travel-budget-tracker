@@ -44,11 +44,12 @@ function renderSettingsScreen() {
           <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate ?? DEFAULT_USD_RATE)}" required>
           ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
 
-          <label class="field-label" for="input-trip-start">시작일</label>
-          <input type="date" id="input-trip-start" value="${settings.tripStartDate ?? ''}" required>
-
-          <label class="field-label" for="input-trip-end">종료일</label>
-          <input type="date" id="input-trip-end" value="${settings.tripEndDate ?? ''}" required>
+          <label class="field-label" for="btn-open-daterange">여행 기간</label>
+          <button type="button" class="date-range-field" id="btn-open-daterange">
+            <span id="date-range-display">${dpFormatRange(settings.tripStartDate, settings.tripEndDate)}</span>
+          </button>
+          <input type="hidden" id="input-trip-start" value="${settings.tripStartDate ?? ''}">
+          <input type="hidden" id="input-trip-end" value="${settings.tripEndDate ?? ''}">
 
           <button type="submit" class="btn-primary">저장</button>
         </form>
@@ -281,5 +282,35 @@ function renderExpenseListScreen() {
           <div class="empty-icon">${ICON_RECEIPT}</div>
           <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 위 + 버튼으로 첫 지출을 기록해보세요.</div>
         </div>`}
+  `;
+}
+
+function renderDateRangeSheet(state) {
+  const container = document.getElementById('daterange-body');
+  const cells = dpBuildMonthGrid(state.year, state.month);
+  const monthLabel = `${state.year}년 ${state.month + 1}월`;
+
+  container.innerHTML = `
+    <div class="dp-header">
+      <button type="button" class="dp-nav" id="dp-prev"><span style="display:inline-block;transform:scaleX(-1)">${ICON_CHEVRON}</span></button>
+      <span class="dp-month-label">${monthLabel}</span>
+      <button type="button" class="dp-nav" id="dp-next">${ICON_CHEVRON}</button>
+    </div>
+    <div class="dp-weekdays">${DP_WEEKDAY_LABELS.map(w => `<span>${w}</span>`).join('')}</div>
+    <div class="dp-grid">
+      ${cells.map(c => {
+        const isStart = c.dateStr === state.start;
+        const isEnd = c.dateStr === state.end;
+        const inRange = state.start && state.end && c.dateStr > state.start && c.dateStr < state.end;
+        const classes = ['dp-day'];
+        if (!c.inMonth) classes.push('dp-muted');
+        if (isStart) classes.push('dp-start');
+        if (isEnd) classes.push('dp-end');
+        if (inRange) classes.push('dp-in-range');
+        return `<button type="button" class="${classes.join(' ')}" data-date="${c.dateStr}">${c.day}</button>`;
+      }).join('')}
+    </div>
+    <div class="dp-summary">${dpFormatRange(state.start, state.end)}</div>
+    <button type="button" class="btn-primary" id="dp-confirm" ${state.start && state.end ? '' : 'disabled'}>확인</button>
   `;
 }
