@@ -538,6 +538,7 @@ function openPackingAddSheet(id = null) {
     : { id: null, name: '', memo: '' };
   renderPackingAddSheetBody(packingAddState);
   document.getElementById('packing-add-sheet').style.display = 'flex';
+  document.getElementById('input-packing-name').focus();
 }
 
 function closePackingAddSheet() {
