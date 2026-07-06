@@ -452,25 +452,32 @@ function renderMealAddSheetBody(state) {
   const container = document.getElementById('meal-add-body');
   const slotLabel = MEAL_SLOTS.find(s => s.id === state.slot)?.label ?? '';
   document.getElementById('meal-add-title').textContent = `${slotLabel} 추가`;
+  const isRestaurant = (state.mode || 'restaurant') === 'restaurant';
 
   container.innerHTML = `
-    ${isKakaoMapConfigured() ? `
-      <label class="field-label" style="margin-top:0">식당 검색 (카카오맵)</label>
+    <div class="ios-segment" id="meal-mode-segment" style="margin-bottom:16px">
+      <div class="ios-segment-thumb" style="--count:2; --index:${isRestaurant ? 0 : 1}"></div>
+      <button type="button" class="ios-segment-btn meal-mode-btn ${isRestaurant ? 'active' : ''}" data-mode="restaurant">식당</button>
+      <button type="button" class="ios-segment-btn meal-mode-btn ${isRestaurant ? '' : 'active'}" data-mode="menu">메뉴만 (캠핑 등)</button>
+    </div>
+
+    ${isRestaurant ? (isKakaoMapConfigured() ? `
+      <label class="field-label">식당 검색 (카카오맵)</label>
       <input type="text" id="input-meal-search" placeholder="식당 이름으로 검색" autocomplete="off">
       <div id="meal-search-results"></div>
     ` : `
       <p class="field-hint" style="margin:0 0 12px">카카오맵 연동 준비 중이에요. 식당 이름은 아래에 직접 입력해주세요.</p>
-    `}
+    `) : ''}
 
-    ${state.selectedPlace ? `
+    ${isRestaurant && state.selectedPlace ? `
       <div class="meal-selected-place">
         <div class="meal-selected-place-name">${escapeHtml(state.selectedPlace.name)}</div>
         <div class="meal-selected-place-address">${escapeHtml(state.selectedPlace.address || '')}</div>
       </div>
     ` : ''}
 
-    <label class="field-label" for="input-meal-name">식당/메뉴 이름</label>
-    <input type="text" id="input-meal-name" placeholder="예: OO식당" value="${escapeHtml(state.selectedPlace?.name ?? state.name ?? '')}">
+    <label class="field-label" for="input-meal-name">${isRestaurant ? '식당 이름' : '메뉴/음식 이름'}</label>
+    <input type="text" id="input-meal-name" placeholder="${isRestaurant ? '예: OO식당' : '예: 김치찌개, 라면'}" value="${escapeHtml((isRestaurant ? state.selectedPlace?.name : null) ?? state.name ?? '')}">
 
     <label class="field-label" for="input-meal-memo">메모 (선택)</label>
     <input type="text" id="input-meal-memo" placeholder="예: 팟타이 추천" value="${escapeHtml(state.memo ?? '')}">

@@ -405,7 +405,7 @@ let mealAddState = null;
 let mealSearchDebounceTimer = null;
 
 function openMealAddSheet(date, slot) {
-  mealAddState = { date, slot, selectedPlace: null, searchResults: null, suggestedBy: getUserName() };
+  mealAddState = { date, slot, mode: 'restaurant', selectedPlace: null, searchResults: null, suggestedBy: getUserName() };
   renderMealAddSheetBody(mealAddState);
   document.getElementById('meal-add-sheet').style.display = 'flex';
 }
@@ -431,15 +431,25 @@ function bindMealAddSheet() {
       return;
     }
 
+    const modeBtn = e.target.closest('.meal-mode-btn');
+    if (modeBtn && mealAddState) {
+      mealAddState.mode = modeBtn.dataset.mode;
+      mealAddState.selectedPlace = null;
+      mealAddState.searchResults = null;
+      renderMealAddSheetBody(mealAddState);
+      return;
+    }
+
     if (e.target.id === 'btn-save-meal') {
       const name = document.getElementById('input-meal-name').value.trim();
       if (!name) {
-        alert('식당/메뉴 이름을 입력해주세요.');
+        alert('이름을 입력해주세요.');
         return;
       }
       const memo = document.getElementById('input-meal-memo').value.trim();
       const suggestedBy = document.getElementById('input-meal-suggester').value.trim();
-      const place = mealAddState.selectedPlace;
+      const isRestaurant = mealAddState.mode === 'restaurant';
+      const place = isRestaurant ? mealAddState.selectedPlace : null;
       addMeal({
         date: mealAddState.date,
         slot: mealAddState.slot,
