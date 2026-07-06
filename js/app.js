@@ -238,6 +238,15 @@ function bindAddExpenseButtons() {
   });
 }
 
+function bindDashboardCategoryFilter() {
+  document.getElementById('screen-dashboard').addEventListener('click', (e) => {
+    const tab = e.target.closest('.filter-tab');
+    if (!tab) return;
+    dashboardCategoryFilter = tab.dataset.value;
+    renderDashboardScreen();
+  });
+}
+
 function bindExpenseList() {
   document.getElementById('screen-expense-list').addEventListener('click', (e) => {
     const btn = e.target.closest('.expense-item');
@@ -310,6 +319,7 @@ bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
 bindAddExpenseButtons();
+bindDashboardCategoryFilter();
 bindBackupButtons();
 bindResetButton();
 bindDateRangeSheet();

@@ -406,6 +406,17 @@ input::placeholder { color: #AEAEB2; }
 }
 .btn-primary:active { opacity: 0.7; }
 
+.btn-add-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+.btn-add-main .btn-icon-inline { display: flex; }
+.btn-add-main .btn-icon-inline svg { width: 18px; height: 18px; }
+
 .btn-danger {
   width: 100%;
   padding: 13px;

@@ -1,3 +1,8 @@
+// Which category tab is selected in the dashboard's expense list filter.
+// Resets to 'all' whenever the previously selected category no longer has
+// any expenses (see renderDashboardScreen).
+let dashboardCategoryFilter = 'all';
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
@@ -102,7 +107,7 @@ function renderDashboardScreen() {
   const tripLabel = tripStatusLabel(settings);
   const tripName = settings.tripName?.trim();
   document.title = tripName ? `${tripName} 가계부` : '여행 가계부';
-  const recent = [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const sortedExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date));
 
   const byCategory = {};
   for (const e of expenses) {
@@ -115,6 +120,16 @@ function renderDashboardScreen() {
     .sort((a, b) => b.amount - a.amount);
   const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
 
+  if (dashboardCategoryFilter !== 'all' && !categoryRows.some(r => r.cat.id === dashboardCategoryFilter)) {
+    dashboardCategoryFilter = 'all';
+  }
+  const listToShow = dashboardCategoryFilter === 'all'
+    ? sortedExpenses.slice(0, 5)
+    : sortedExpenses.filter(e => (e.category || 'other') === dashboardCategoryFilter);
+  const listTitle = dashboardCategoryFilter === 'all'
+    ? '최근 지출'
+    : `${getCategoryById(dashboardCategoryFilter).label} 지출`;
+
   const ringAmountText = `${Math.abs(remaining).toLocaleString()}원`;
   const ringFontSize = fitFontSize(ringAmountText, [[8, 20], [10, 17], [12, 15], [15, 12]]);
   const totalBudgetText = `${settings.totalBudget.toLocaleString()}원`;
@@ -124,7 +139,6 @@ function renderDashboardScreen() {
   container.innerHTML = `
     <div class="ios-header">
       <h1 class="ios-large-title">${tripName ? escapeHtml(tripName) : '대시보드'}</h1>
-      <button type="button" class="ios-header-action" id="btn-add-expense" aria-label="지출 추가">${ICON_PLUS}</button>
     </div>
     <p class="trip-pill">${tripLabel}</p>
 
@@ -147,6 +161,10 @@ function renderDashboardScreen() {
       </div>
     </div>
 
+    <button type="button" class="btn-primary btn-add-main" id="btn-add-expense">
+      <span class="btn-icon-inline">${ICON_PLUS}</span>지출 추가
+    </button>
+
     ${categoryRows.length ? `
       <h3 class="section-title">카테고리별 지출</h3>
       <div class="card-section">
@@ -161,12 +179,22 @@ function renderDashboardScreen() {
       </div>
     ` : ''}
 
-    <h3 class="section-title">최근 지출</h3>
-    ${recent.length
-      ? `<div class="card-section">${recent.map(e => expenseCardHtml(e)).join('')}</div>`
+    <h3 class="section-title">${listTitle}</h3>
+    ${categoryRows.length ? `
+      <div class="ios-chip-row" id="dashboard-category-filter" style="margin-bottom:12px">
+        <button type="button" class="ios-chip filter-tab ${dashboardCategoryFilter === 'all' ? 'active' : ''}" data-value="all">전체</button>
+        ${categoryRows.map(({ cat }) => `
+          <button type="button" class="ios-chip filter-tab ${dashboardCategoryFilter === cat.id ? 'active' : ''}" data-value="${cat.id}">
+            <span class="chip-dot" style="background:${dashboardCategoryFilter === cat.id ? '#fff' : cat.color}"></span>${cat.label}
+          </button>
+        `).join('')}
+      </div>
+    ` : ''}
+    ${listToShow.length
+      ? `<div class="card-section">${listToShow.map(e => expenseCardHtml(e)).join('')}</div>`
       : `<div class="empty-state">
           <div class="empty-icon">${ICON_RECEIPT}</div>
-          <div class="empty-text">아직 지출 내역이 없어요.<br>오른쪽 위 + 버튼으로 첫 지출을 기록해보세요.</div>
+          <div class="empty-text">아직 지출 내역이 없어요.<br>위의 + 지출 추가 버튼으로 첫 지출을 기록해보세요.</div>
         </div>`}
   `;
 }
