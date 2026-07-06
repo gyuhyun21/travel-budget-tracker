@@ -20,7 +20,7 @@
       <h2>지출 목록</h2>
     </section>
     <section id="screen-meals" class="screen">
-      <h2>맛집</h2>
+      <h2>뭐먹?</h2>
     </section>
     <section id="screen-settings" class="screen">
       <h2>설정</h2>
@@ -30,6 +30,17 @@
   <div id="sync-loading" class="sync-loading-overlay" style="display:none">
     <div class="sync-loading-spinner"></div>
     <p>같이 보는 여행 불러오는 중...</p>
+  </div>
+
+  <div id="username-sheet" class="dp-overlay" style="display:none">
+    <div class="dp-sheet">
+      <div class="dp-sheet-header">
+        <span class="dp-title">이름을 알려주세요</span>
+      </div>
+      <p class="field-hint" style="margin:0 0 12px">지출을 등록하거나 뭐먹?에 추천을 남길 때 누가 남겼는지 표시하는 데 써요.</p>
+      <input type="text" id="input-user-name" placeholder="이름 또는 닉네임" autocomplete="off">
+      <button type="button" class="btn-primary" id="btn-save-username">시작하기</button>
+    </div>
   </div>
 
   <div id="daterange-sheet" class="dp-overlay" style="display:none">
@@ -45,7 +56,7 @@
   <div id="meal-add-sheet" class="dp-overlay" style="display:none">
     <div class="dp-sheet">
       <div class="dp-sheet-header">
-        <span class="dp-title" id="meal-add-title">맛집 추가</span>
+        <span class="dp-title" id="meal-add-title">추가</span>
         <button type="button" class="ios-header-link" id="meal-add-close">닫기</button>
       </div>
       <div id="meal-add-body"></div>
@@ -60,7 +71,7 @@
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>지출목록
     </button>
     <button data-screen="meals" class="nav-btn">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 0 16 0"/><path d="M2 13h20"/><path d="M9 4c-.5 1-.5 2 0 3M12 3c-.5 1-.5 2 0 3M15 4c-.5 1-.5 2 0 3"/></svg></span>맛집
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 0 16 0"/><path d="M2 13h20"/><path d="M9 4c-.5 1-.5 2 0 3M12 3c-.5 1-.5 2 0 3M15 4c-.5 1-.5 2 0 3"/></svg></span>뭐먹?
     </button>
     <button data-screen="settings" class="nav-btn">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M4.9 4.9l1.55 1.55M17.55 17.55 19.1 19.1M3 12h2.2M18.8 12H21M4.9 19.1l1.55-1.55M17.55 6.45 19.1 4.9"/></svg></span>설정

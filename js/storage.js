@@ -5,6 +5,19 @@ const STORAGE_KEYS = {
   TRIP_ID: 'cmb_shared_trip_id'
 };
 
+// This device's display name. Deliberately outside STORAGE_KEYS/resetAllData
+// — it identifies the person using this browser, not the trip's data, so it
+// should survive resets and switching between trips.
+const USER_NAME_KEY = 'cmb_user_name';
+
+function getUserName() {
+  return localStorage.getItem(USER_NAME_KEY) || '';
+}
+
+function setUserName(name) {
+  localStorage.setItem(USER_NAME_KEY, name);
+}
+
 // When a trip is shared, all reads/writes below route to these in-memory
 // caches (kept live by Firestore's onSnapshot listeners in sync.js) instead
 // of localStorage. See startSharedSync().

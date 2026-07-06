@@ -15,6 +15,14 @@ function bindSettingsForm() {
   const container = document.getElementById('screen-settings');
 
   container.addEventListener('submit', (e) => {
+    if (e.target.id === 'username-form') {
+      e.preventDefault();
+      const name = document.getElementById('input-settings-user-name').value.trim();
+      if (!name) return;
+      setUserName(name);
+      renderSettingsScreen();
+      return;
+    }
     if (e.target.id !== 'settings-form') return;
     e.preventDefault();
     const tripStartDate = document.getElementById('input-trip-start').value;
@@ -200,7 +208,7 @@ function bindExpenseForm() {
     if (id) {
       updateExpense(id, expenseData);
     } else {
-      addExpense(expenseData);
+      addExpense({ ...expenseData, addedBy: getUserName() });
     }
     showScreen('dashboard');
   });
@@ -397,7 +405,7 @@ let mealAddState = null;
 let mealSearchDebounceTimer = null;
 
 function openMealAddSheet(date, slot) {
-  mealAddState = { date, slot, selectedPlace: null, searchResults: null };
+  mealAddState = { date, slot, selectedPlace: null, searchResults: null, suggestedBy: getUserName() };
   renderMealAddSheetBody(mealAddState);
   document.getElementById('meal-add-sheet').style.display = 'flex';
 }
@@ -481,6 +489,26 @@ bindDateRangeSheet();
 bindMealPlanScreen();
 bindMealAddSheet();
 
+function showUsernamePrompt(onDone) {
+  const overlay = document.getElementById('username-sheet');
+  const input = document.getElementById('input-user-name');
+  const btn = document.getElementById('btn-save-username');
+  overlay.style.display = 'flex';
+  const submit = () => {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    setUserName(name);
+    overlay.style.display = 'none';
+    btn.removeEventListener('click', submit);
+    input.removeEventListener('keydown', onKeydown);
+    onDone();
+  };
+  const onKeydown = (e) => { if (e.key === 'Enter') submit(); };
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', onKeydown);
+  input.focus();
+}
+
 function boot() {
   if (initSharedModeFromUrl()) {
     document.getElementById('sync-loading').style.display = 'flex';
@@ -500,7 +528,11 @@ function boot() {
   showScreen(getSettings() ? 'dashboard' : 'settings');
 }
 
-boot();
+if (!getUserName()) {
+  showUsernamePrompt(boot);
+} else {
+  boot();
+}
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

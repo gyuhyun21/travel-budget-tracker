@@ -53,6 +53,18 @@ function renderSettingsScreen() {
   container.innerHTML = `
     <div class="ios-header"><h1 class="ios-large-title">설정</h1></div>
     ${isFirstRun ? '<p class="banner-info" id="settings-first-run-banner">환영합니다! 제목과 예산, 환율을 먼저 설정해주세요.</p>' : ''}
+
+    <h3 class="section-title">내 정보</h3>
+    <div class="card-section">
+      <div class="card-section-pad">
+        <form id="username-form">
+          <label class="field-label" style="margin-top:0" for="input-settings-user-name">내 이름</label>
+          <input type="text" id="input-settings-user-name" value="${escapeHtml(getUserName())}" placeholder="이름 또는 닉네임">
+          <button type="submit" class="btn-primary" style="margin-top:14px">이름 저장</button>
+        </form>
+      </div>
+    </div>
+
     <h3 class="section-title">제목 &amp; 기간</h3>
     <div class="card-section">
       <div class="card-section-pad">
@@ -242,7 +254,7 @@ function expenseCardHtml(e) {
       <span class="cat-dot" style="background:${cat.color}"></span>
       <span class="expense-info">
         <span class="expense-memo">${escapeHtml(e.memo || cat.label)}</span>
-        <span class="expense-meta">${cat.label}</span>
+        <span class="expense-meta">${cat.label}${e.addedBy ? ` · ${escapeHtml(e.addedBy)}` : ''}</span>
       </span>
       <span class="expense-amount">
         ${Math.round(e.krwAmount).toLocaleString()}원
@@ -374,7 +386,7 @@ function renderDateRangeSheet(state) {
   `;
 }
 
-// Which day tab is showing in the 맛집 screen. Reset to null so the first
+// Which day tab is showing in the 뭐먹? screen. Reset to null so the first
 // render picks today (if it's within the trip) or the trip's first day.
 let mealPlanSelectedDate = null;
 
@@ -383,7 +395,7 @@ function renderMealPlanScreen() {
   const container = document.getElementById('screen-meals');
   if (!settings || !settings.tripStartDate || !settings.tripEndDate) {
     container.innerHTML = `
-      <div class="ios-header"><h1 class="ios-large-title">맛집</h1></div>
+      <div class="ios-header"><h1 class="ios-large-title">뭐먹?</h1></div>
       <div class="empty-state">
         <div class="empty-icon">${ICON_INFO}</div>
         <div class="empty-text">먼저 설정 화면에서<br>여행 기간을 입력해주세요.</div>
@@ -401,7 +413,7 @@ function renderMealPlanScreen() {
   const meals = getMeals();
 
   container.innerHTML = `
-    <div class="ios-header"><h1 class="ios-large-title">맛집</h1></div>
+    <div class="ios-header"><h1 class="ios-large-title">뭐먹?</h1></div>
     <div class="ios-chip-row" id="meal-day-tabs" style="margin-bottom:16px">
       ${days.map(d => {
         const [, m, day] = d.date.split('-');
@@ -439,7 +451,7 @@ function mealEntryHtml(m) {
 function renderMealAddSheetBody(state) {
   const container = document.getElementById('meal-add-body');
   const slotLabel = MEAL_SLOTS.find(s => s.id === state.slot)?.label ?? '';
-  document.getElementById('meal-add-title').textContent = `${slotLabel} 맛집 추가`;
+  document.getElementById('meal-add-title').textContent = `${slotLabel} 추가`;
 
   container.innerHTML = `
     ${isKakaoMapConfigured() ? `
