@@ -242,6 +242,8 @@ function renderDashboardScreen() {
   `;
 }
 
+const SPENDER_UNKNOWN_LABEL = '미확인';
+
 function expenseCardHtml(e) {
   const cat = getCategoryById(e.category);
   const [, month, day] = e.date.split('-');
@@ -254,7 +256,7 @@ function expenseCardHtml(e) {
       <span class="cat-dot" style="background:${cat.color}"></span>
       <span class="expense-info">
         <span class="expense-memo">${escapeHtml(e.memo || cat.label)}</span>
-        <span class="expense-meta">${cat.label}${e.addedBy ? ` · ${escapeHtml(e.addedBy)}` : ''}</span>
+        <span class="expense-meta">${cat.label} · ${escapeHtml(e.spender || SPENDER_UNKNOWN_LABEL)}</span>
       </span>
       <span class="expense-amount">
         ${Math.round(e.krwAmount).toLocaleString()}원
@@ -262,6 +264,35 @@ function expenseCardHtml(e) {
       </span>
       <span class="chevron">${ICON_CHEVRON}</span>
     </button>
+  `;
+}
+
+function spenderChipsHtml(selected, participants) {
+  return participants.map(p => `
+    <button type="button" class="ios-chip spender-chip-btn ${p === selected ? 'active' : ''}" data-value="${escapeHtml(p)}">${escapeHtml(p)}</button>
+  `).join('');
+}
+
+function spenderSummaryHtml(expenses, participants) {
+  const totals = {};
+  for (const e of expenses) {
+    const key = e.spender || SPENDER_UNKNOWN_LABEL;
+    totals[key] = (totals[key] || 0) + (e.krwAmount || 0);
+  }
+  const people = [
+    ...participants.map(name => ({ name, amount: totals[name] || 0, known: true })),
+    ...(totals[SPENDER_UNKNOWN_LABEL] ? [{ name: SPENDER_UNKNOWN_LABEL, amount: totals[SPENDER_UNKNOWN_LABEL], known: false }] : []),
+  ];
+  if (!people.length) return '';
+  return `
+    <div class="spender-summary-row">
+      ${people.map(p => `
+        <div class="spender-summary-tile ${p.known ? '' : 'spender-summary-unknown'}">
+          <span class="spender-summary-name">${escapeHtml(p.name)}</span>
+          <span class="spender-summary-amount">${Math.round(p.amount).toLocaleString()}원</span>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -295,6 +326,8 @@ function renderExpenseFormScreen(editId = null) {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const selectedCurrency = existing?.currency || 'THB';
   const selectedCategory = existing?.category || 'other';
+  const participants = getSettings()?.packingParticipants || [];
+  const selectedSpender = existing?.spender || '';
 
   container.innerHTML = `
     <div class="ios-header">
@@ -314,6 +347,7 @@ function renderExpenseFormScreen(editId = null) {
           <input type="hidden" id="input-expense-id" value="${existing ? existing.id : ''}">
           <input type="hidden" id="input-expense-currency" value="${selectedCurrency}">
           <input type="hidden" id="input-expense-category" value="${selectedCategory}">
+          <input type="hidden" id="input-expense-spender" value="${escapeHtml(selectedSpender)}">
 
           <label class="field-label" style="margin-top:0" for="input-expense-date">날짜</label>
           <input type="date" id="input-expense-date" value="${existing ? existing.date : today}" required>
@@ -326,6 +360,12 @@ function renderExpenseFormScreen(editId = null) {
 
           <label class="field-label">카테고리</label>
           <div class="ios-chip-row" id="category-segmented">${categorySegmentedHtml(selectedCategory)}</div>
+
+          <label class="field-label">지출한 사람</label>
+          ${participants.length
+            ? `<div class="ios-chip-row" id="spender-chip-row">${spenderChipsHtml(selectedSpender, participants)}</div>`
+            : `<p class="field-hint" style="margin-top:0">준비물 탭의 참여자 관리에서 참여자를 추가하면 지정할 수 있어요.</p>`}
+          <p class="field-hint" style="margin:4px 0 0">선택하지 않으면 '${SPENDER_UNKNOWN_LABEL}'으로 기록돼요.</p>
 
           <label class="field-label" for="input-expense-memo">메모</label>
           <input type="text" id="input-expense-memo" value="${existing ? escapeHtml(existing.memo || '') : ''}" placeholder="예: 팟타이 점심">
@@ -341,12 +381,14 @@ function renderExpenseFormScreen(editId = null) {
 
 function renderExpenseListScreen() {
   const expenses = [...getExpenses()].sort((a, b) => b.date.localeCompare(a.date));
+  const participants = getSettings()?.packingParticipants || [];
   const container = document.getElementById('screen-expense-list');
   container.innerHTML = `
     <div class="ios-header">
       <h1 class="ios-large-title">지출 목록</h1>
       <button type="button" class="ios-header-action" id="btn-add-expense" aria-label="지출 추가">${ICON_PLUS}</button>
     </div>
+    ${expenses.length ? spenderSummaryHtml(expenses, participants) : ''}
     ${expenses.length
       ? `<div class="card-section">${expenses.map(e => expenseCardHtml(e)).join('')}</div>`
       : `<div class="empty-state">

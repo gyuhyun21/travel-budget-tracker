@@ -186,6 +186,16 @@ function setActiveCategory(value) {
   document.getElementById('input-expense-category').value = value;
 }
 
+function setActiveSpenderChip(value) {
+  const group = document.getElementById('spender-chip-row');
+  if (group) {
+    group.querySelectorAll('.spender-chip-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === value);
+    });
+  }
+  document.getElementById('input-expense-spender').value = value;
+}
+
 function bindExpenseForm() {
   const container = document.getElementById('screen-add-expense');
 
@@ -199,6 +209,7 @@ function bindExpenseForm() {
     const amount = parseMoneyInput(document.getElementById('input-expense-amount').value);
     const category = document.getElementById('input-expense-category').value;
     const memo = document.getElementById('input-expense-memo').value;
+    const spender = document.getElementById('input-expense-spender').value || SPENDER_UNKNOWN_LABEL;
     const krwAmount = toKRW(amount, currency, settings);
     const messageEl = document.getElementById('expense-form-message');
     if (krwAmount === null) {
@@ -206,11 +217,11 @@ function bindExpenseForm() {
       messageEl.style.display = 'block';
       return;
     }
-    const expenseData = { date, currency, amount, krwAmount, category, memo };
+    const expenseData = { date, currency, amount, krwAmount, category, memo, spender };
     if (id) {
       updateExpense(id, expenseData);
     } else {
-      addExpense({ ...expenseData, addedBy: getUserName() });
+      addExpense(expenseData);
     }
     showScreen('dashboard');
   });
@@ -237,6 +248,13 @@ function bindExpenseForm() {
     const categoryBtn = e.target.closest('.category-btn');
     if (categoryBtn) {
       setActiveCategory(categoryBtn.dataset.value);
+      return;
+    }
+
+    const spenderBtn = e.target.closest('.spender-chip-btn');
+    if (spenderBtn) {
+      const isActive = spenderBtn.classList.contains('active');
+      setActiveSpenderChip(isActive ? '' : spenderBtn.dataset.value);
       return;
     }
 

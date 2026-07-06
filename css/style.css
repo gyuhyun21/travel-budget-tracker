@@ -824,6 +824,46 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   background: linear-gradient(135deg, #FF7AD1, #FF1E93);
 }
 
+.spender-summary-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.spender-summary-row::-webkit-scrollbar { display: none; }
+.spender-summary-tile {
+  flex: 0 0 auto;
+  min-width: 104px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #FFFB6E, #FFE600);
+  box-shadow: var(--shadow-card);
+}
+.spender-summary-tile.spender-summary-unknown {
+  background: linear-gradient(135deg, #FF7AD1, #FF1E93);
+}
+.spender-summary-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 590;
+  color: rgba(28, 28, 30, 0.65);
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.spender-summary-tile.spender-summary-unknown .spender-summary-name { color: rgba(255, 255, 255, 0.85); }
+.spender-summary-amount {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1C1C1E;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.spender-summary-tile.spender-summary-unknown .spender-summary-amount { color: #fff; }
+
 .participant-list { margin-bottom: 4px; }
 .participant-row {
   display: flex;
