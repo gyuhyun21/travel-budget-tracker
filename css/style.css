@@ -755,57 +755,65 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   white-space: nowrap;
 }
 
-.packing-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 16px;
+.packing-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+}
+.packing-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.packing-table th, .packing-table td {
   border-bottom: 0.5px solid var(--color-separator);
 }
-.card-section .packing-item:last-child { border-bottom: none; }
-.packing-check {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1.5px solid var(--color-border);
+.packing-table thead th {
+  font-size: 12px;
+  font-weight: 590;
+  color: var(--color-ink-soft);
+  padding: 10px 12px;
+  white-space: nowrap;
+  text-align: center;
   background: var(--color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  cursor: pointer;
-  padding: 0;
 }
-.packing-check svg { width: 13px; height: 13px; }
-.packing-check.packing-check-done { background: var(--color-success); border-color: var(--color-success); }
-.packing-item-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  background: none;
-  border: none;
-  padding: 0;
+.packing-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--color-surface);
+}
+.packing-row-header {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  padding: 10px 14px;
   text-align: left;
+  font-weight: 400;
   cursor: pointer;
-  font-family: inherit;
+  max-width: 140px;
+  box-shadow: 1px 0 0 var(--color-separator);
 }
-.packing-item-name { font-size: 15px; color: var(--color-ink); }
-.packing-item-memo { font-size: 12px; color: var(--color-ink-soft); margin-top: 1px; }
-.packing-item-main.packing-item-done .packing-item-name {
-  color: var(--color-ink-soft);
-  text-decoration: line-through;
-}
-.packing-delete-btn {
-  flex-shrink: 0;
-  border: none;
-  background: none;
-  color: var(--color-ink-soft);
-  font-size: 15px;
+.packing-row-name { display: block; font-size: 14px; color: var(--color-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.packing-row-memo { display: block; font-size: 11px; color: var(--color-ink-soft); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.packing-table tbody tr:last-child th, .packing-table tbody tr:last-child td { border-bottom: none; }
+
+.packing-cell {
+  min-width: 64px;
+  height: 48px;
+  text-align: center;
   cursor: pointer;
-  padding: 4px;
+  padding: 0;
+}
+.packing-cell svg { width: 15px; height: 15px; margin: 0 auto; color: #1C1C1E; }
+.packing-cell-assigned {
+  background: linear-gradient(135deg, #FFFB6E, #FFE600);
+}
+.packing-cell-unassigned {
+  background: linear-gradient(135deg, #FF7AD1, #FF1E93);
 }
 
 .participant-list { margin-bottom: 4px; }

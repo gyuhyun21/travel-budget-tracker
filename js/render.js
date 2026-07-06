@@ -528,11 +528,11 @@ function renderPackingScreen() {
       <span class="btn-icon-inline">${ICON_PLUS}</span>준비물 추가
     </button>
 
-    ${renderPackingGroups(participants, items)}
+    ${renderPackingTable(participants, items)}
   `;
 }
 
-function renderPackingGroups(participants, items) {
+function renderPackingTable(participants, items) {
   if (!items.length) {
     return `
       <div class="empty-state">
@@ -541,42 +541,43 @@ function renderPackingGroups(participants, items) {
       </div>
     `;
   }
-  const groups = [...participants, UNASSIGNED_LABEL];
-  return groups.map(person => {
-    const personItems = items.filter(i => (i.assignee || UNASSIGNED_LABEL) === person);
-    if (!personItems.length) return '';
-    return `
-      <h3 class="section-title">${escapeHtml(person)}</h3>
-      <div class="card-section">
-        ${personItems.map(i => packingItemHtml(i)).join('')}
-      </div>
-    `;
-  }).join('');
-}
-
-function packingItemHtml(item) {
+  const columns = [...participants, UNASSIGNED_LABEL];
   return `
-    <div class="packing-item">
-      <button type="button" class="packing-check ${item.checked ? 'packing-check-done' : ''}" data-id="${item.id}" aria-label="완료 체크">${item.checked ? ICON_CHECK : ''}</button>
-      <button type="button" class="packing-item-main ${item.checked ? 'packing-item-done' : ''}" data-id="${item.id}">
-        <span class="packing-item-name">${escapeHtml(item.name)}</span>
-        ${item.memo ? `<span class="packing-item-memo">${escapeHtml(item.memo)}</span>` : ''}
-      </button>
-      <button type="button" class="packing-delete-btn" data-id="${item.id}" aria-label="삭제">✕</button>
+    <div class="packing-table-wrap">
+      <table class="packing-table">
+        <thead>
+          <tr>
+            <th class="packing-corner"></th>
+            ${columns.map(col => `<th>${escapeHtml(col)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(item => packingTableRowHtml(item, columns)).join('')}
+        </tbody>
+      </table>
     </div>
+    <p class="field-hint" style="margin:8px 2px 0">준비물 이름을 탭하면 수정·삭제, 담당자 칸을 탭하면 그 사람에게 배정돼요. 이미 배정된 칸을 다시 탭하면 준비완료로 체크돼요.</p>
   `;
 }
 
-function packingAssigneeChipsHtml(participants, selected) {
-  const options = [UNASSIGNED_LABEL, ...participants];
-  return options.map(p => `
-    <button type="button" class="ios-chip packing-assignee-btn ${(selected || UNASSIGNED_LABEL) === p ? 'active' : ''}" data-assignee="${escapeHtml(p)}">${escapeHtml(p)}</button>
-  `).join('');
+function packingTableRowHtml(item, columns) {
+  const currentAssignee = item.assignee || UNASSIGNED_LABEL;
+  return `
+    <tr>
+      <th class="packing-row-header" data-id="${item.id}">
+        <span class="packing-row-name">${escapeHtml(item.name)}</span>
+        ${item.memo ? `<span class="packing-row-memo">${escapeHtml(item.memo)}</span>` : ''}
+      </th>
+      ${columns.map(col => {
+        const isAssigned = currentAssignee === col;
+        const cellClass = isAssigned ? (col === UNASSIGNED_LABEL ? 'packing-cell-unassigned' : 'packing-cell-assigned') : '';
+        return `<td class="packing-cell ${cellClass}" data-id="${item.id}" data-assignee="${escapeHtml(col)}">${isAssigned && item.checked ? ICON_CHECK : ''}</td>`;
+      }).join('')}
+    </tr>
+  `;
 }
 
 function renderPackingAddSheetBody(state) {
-  const settings = getSettings();
-  const participants = settings?.packingParticipants || [];
   const container = document.getElementById('packing-add-body');
   document.getElementById('packing-add-title').textContent = state.id ? '준비물 수정' : '준비물 추가';
 
@@ -584,11 +585,10 @@ function renderPackingAddSheetBody(state) {
     <label class="field-label" style="margin-top:0" for="input-packing-name">준비물 이름</label>
     <input type="text" id="input-packing-name" placeholder="예: 텐트, 버너" value="${escapeHtml(state.name ?? '')}">
 
-    <label class="field-label">담당자</label>
-    <div class="ios-chip-row" id="packing-assignee-picker">${packingAssigneeChipsHtml(participants, state.assignee)}</div>
-
     <label class="field-label" for="input-packing-memo">메모 (선택)</label>
     <input type="text" id="input-packing-memo" placeholder="예: 4인용" value="${escapeHtml(state.memo ?? '')}">
+
+    <p class="field-hint" style="margin:0 0 4px">${state.id ? '담당자는 표에서 칸을 탭해 바꿀 수 있어요.' : '추가 후 표에서 담당자 칸을 탭해 배정해주세요.'}</p>
 
     <button type="button" class="btn-primary" id="btn-save-packing-item">${state.id ? '수정' : '추가'}</button>
     ${state.id ? '<button type="button" class="btn-danger" id="btn-delete-packing-item">삭제</button>' : ''}

@@ -504,25 +504,27 @@ function bindPackingScreen() {
       return;
     }
 
-    const checkBtn = e.target.closest('.packing-check');
-    if (checkBtn) {
-      const item = getPackingItemById(checkBtn.dataset.id);
-      if (item) updatePackingItem(item.id, { checked: !item.checked });
+    const cell = e.target.closest('.packing-cell');
+    if (cell) {
+      const item = getPackingItemById(cell.dataset.id);
+      if (!item) return;
+      const column = cell.dataset.assignee;
+      const currentAssignee = item.assignee || UNASSIGNED_LABEL;
+      if (currentAssignee === column) {
+        // Tapping the cell that's already assigned toggles it prepared/not.
+        updatePackingItem(item.id, { checked: !item.checked });
+      } else {
+        // Tapping a different cell reassigns to that column (fresh item
+        // isn't prepared yet under its new owner).
+        updatePackingItem(item.id, { assignee: column === UNASSIGNED_LABEL ? null : column, checked: false });
+      }
       renderPackingScreen();
       return;
     }
 
-    const itemBtn = e.target.closest('.packing-item-main');
-    if (itemBtn) {
-      openPackingAddSheet(itemBtn.dataset.id);
-      return;
-    }
-
-    const deleteBtn = e.target.closest('.packing-delete-btn');
-    if (deleteBtn) {
-      if (!confirm('이 준비물을 삭제할까요?')) return;
-      deletePackingItem(deleteBtn.dataset.id);
-      renderPackingScreen();
+    const rowHeader = e.target.closest('.packing-row-header');
+    if (rowHeader) {
+      openPackingAddSheet(rowHeader.dataset.id);
     }
   });
 }
@@ -532,8 +534,8 @@ let packingAddState = null;
 function openPackingAddSheet(id = null) {
   const existing = id ? getPackingItemById(id) : null;
   packingAddState = existing
-    ? { id: existing.id, name: existing.name, assignee: existing.assignee, memo: existing.memo }
-    : { id: null, name: '', assignee: null, memo: '' };
+    ? { id: existing.id, name: existing.name, memo: existing.memo }
+    : { id: null, name: '', memo: '' };
   renderPackingAddSheetBody(packingAddState);
   document.getElementById('packing-add-sheet').style.display = 'flex';
 }
@@ -552,19 +554,6 @@ function bindPackingAddSheet() {
       return;
     }
 
-    const assigneeBtn = e.target.closest('.packing-assignee-btn');
-    if (assigneeBtn) {
-      // Toggle the chip in place instead of re-rendering the whole sheet,
-      // so an already-typed name/memo doesn't get wiped by the fresh
-      // template (which only reflects packingAddState, not live input values).
-      const value = assigneeBtn.dataset.assignee;
-      packingAddState.assignee = value === UNASSIGNED_LABEL ? null : value;
-      document.querySelectorAll('.packing-assignee-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.assignee === value);
-      });
-      return;
-    }
-
     if (e.target.id === 'btn-save-packing-item') {
       const name = document.getElementById('input-packing-name').value.trim();
       if (!name) {
@@ -572,11 +561,10 @@ function bindPackingAddSheet() {
         return;
       }
       const memo = document.getElementById('input-packing-memo').value.trim();
-      const fields = { name, memo, assignee: packingAddState.assignee };
       if (packingAddState.id) {
-        updatePackingItem(packingAddState.id, fields);
+        updatePackingItem(packingAddState.id, { name, memo });
       } else {
-        addPackingItem(fields);
+        addPackingItem({ name, memo, assignee: null });
       }
       closePackingAddSheet();
       renderPackingScreen();
