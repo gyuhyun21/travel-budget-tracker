@@ -8,6 +8,7 @@ function showScreen(name) {
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
   if (name === 'expense-list') renderExpenseListScreen();
+  if (name === 'meals') renderMealPlanScreen();
 }
 
 function bindSettingsForm() {
@@ -306,7 +307,7 @@ function bindBackupButtons() {
 
   container.addEventListener('click', (e) => {
     if (e.target.id !== 'btn-export') return;
-    const data = { settings: getSettings(), expenses: getExpenses() };
+    const data = { settings: getSettings(), expenses: getExpenses(), meals: getMeals() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -332,8 +333,10 @@ function bindBackupButtons() {
         if (!confirm('기존 데이터를 덮어씁니다. 계속할까요?')) return;
         saveSettings(data.settings);
         saveExpenses(data.expenses);
+        saveMeals(Array.isArray(data.meals) ? data.meals : []);
         renderSettingsScreen();
         renderDashboardScreen();
+        renderMealPlanScreen();
         const restored = document.getElementById('settings-message');
         restored.textContent = '복원되었습니다.';
         restored.style.display = 'block';
@@ -360,6 +363,113 @@ function bindResetButton() {
   });
 }
 
+function bindMealPlanScreen() {
+  document.getElementById('screen-meals').addEventListener('click', (e) => {
+    const dayTab = e.target.closest('.meal-day-tab');
+    if (dayTab) {
+      mealPlanSelectedDate = dayTab.dataset.date;
+      renderMealPlanScreen();
+      return;
+    }
+
+    const addRow = e.target.closest('.meal-add-row');
+    if (addRow) {
+      openMealAddSheet(addRow.dataset.date, addRow.dataset.slot);
+      return;
+    }
+
+    const mapBtn = e.target.closest('.meal-map-btn');
+    if (mapBtn) {
+      window.open(mapBtn.dataset.url, '_blank', 'noopener');
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.meal-delete-btn');
+    if (deleteBtn) {
+      if (!confirm('이 추천을 삭제할까요?')) return;
+      deleteMeal(deleteBtn.dataset.id);
+      renderMealPlanScreen();
+    }
+  });
+}
+
+let mealAddState = null;
+let mealSearchDebounceTimer = null;
+
+function openMealAddSheet(date, slot) {
+  mealAddState = { date, slot, selectedPlace: null, searchResults: null };
+  renderMealAddSheetBody(mealAddState);
+  document.getElementById('meal-add-sheet').style.display = 'flex';
+}
+
+function closeMealAddSheet() {
+  document.getElementById('meal-add-sheet').style.display = 'none';
+  mealAddState = null;
+}
+
+function bindMealAddSheet() {
+  const overlay = document.getElementById('meal-add-sheet');
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'meal-add-close') {
+      closeMealAddSheet();
+      return;
+    }
+
+    const resultBtn = e.target.closest('.meal-search-result');
+    if (resultBtn && mealAddState) {
+      mealAddState.selectedPlace = mealAddState.searchResults[Number(resultBtn.dataset.index)];
+      renderMealAddSheetBody(mealAddState);
+      return;
+    }
+
+    if (e.target.id === 'btn-save-meal') {
+      const name = document.getElementById('input-meal-name').value.trim();
+      if (!name) {
+        alert('식당/메뉴 이름을 입력해주세요.');
+        return;
+      }
+      const memo = document.getElementById('input-meal-memo').value.trim();
+      const suggestedBy = document.getElementById('input-meal-suggester').value.trim();
+      const place = mealAddState.selectedPlace;
+      addMeal({
+        date: mealAddState.date,
+        slot: mealAddState.slot,
+        name,
+        memo,
+        suggestedBy,
+        address: place?.address || '',
+        placeUrl: place?.placeUrl || '',
+        lat: place?.lat || null,
+        lng: place?.lng || null
+      });
+      closeMealAddSheet();
+      renderMealPlanScreen();
+    }
+  });
+
+  overlay.addEventListener('input', (e) => {
+    if (e.target.id !== 'input-meal-search') return;
+    const keyword = e.target.value.trim();
+    clearTimeout(mealSearchDebounceTimer);
+    const resultsEl = document.getElementById('meal-search-results');
+    if (!keyword) {
+      mealAddState.searchResults = null;
+      resultsEl.innerHTML = '';
+      return;
+    }
+    mealSearchDebounceTimer = setTimeout(async () => {
+      try {
+        const results = await searchKakaoPlaces(keyword);
+        mealAddState.searchResults = results;
+        resultsEl.innerHTML = mealSearchResultsHtml(results);
+      } catch (err) {
+        resultsEl.innerHTML = '<p class="field-hint" style="margin:6px 0 0">검색을 사용할 수 없어요. 이름을 직접 입력해주세요.</p>';
+      }
+    }, 400);
+  });
+}
+
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
@@ -368,6 +478,8 @@ bindDashboardCategoryFilter();
 bindBackupButtons();
 bindResetButton();
 bindDateRangeSheet();
+bindMealPlanScreen();
+bindMealAddSheet();
 
 function boot() {
   if (initSharedModeFromUrl()) {
@@ -380,6 +492,7 @@ function boot() {
       () => {
         renderDashboardScreen();
         renderExpenseListScreen();
+        renderMealPlanScreen();
       }
     );
     return;

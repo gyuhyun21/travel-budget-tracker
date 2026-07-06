@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   SETTINGS: 'cmb_settings',
   EXPENSES: 'cmb_expenses',
+  MEALS: 'cmb_meals',
   TRIP_ID: 'cmb_shared_trip_id'
 };
 
@@ -10,6 +11,7 @@ const STORAGE_KEYS = {
 let sharedTripId = null;
 let cachedSettings = null;
 let cachedExpenses = [];
+let cachedMeals = [];
 
 function isSharedMode() {
   return !!sharedTripId;
@@ -46,13 +48,15 @@ let initialSyncDone = false;
 function startSharedSync(onReady, onUpdate) {
   let settingsSeen = false;
   let expensesSeen = false;
+  let mealsSeen = false;
   const maybeReady = () => {
     if (initialSyncDone) { onUpdate(); return; }
-    if (settingsSeen && expensesSeen) { initialSyncDone = true; onReady(); }
+    if (settingsSeen && expensesSeen && mealsSeen) { initialSyncDone = true; onReady(); }
   };
   subscribeToTrip(sharedTripId, {
     onSettings: (settings) => { cachedSettings = settings; settingsSeen = true; maybeReady(); },
-    onExpenses: (expenses) => { cachedExpenses = expenses; expensesSeen = true; maybeReady(); }
+    onExpenses: (expenses) => { cachedExpenses = expenses; expensesSeen = true; maybeReady(); },
+    onMeals: (meals) => { cachedMeals = meals; mealsSeen = true; maybeReady(); }
   });
 }
 
@@ -62,7 +66,8 @@ function startSharedSync(onReady, onUpdate) {
 async function enableSharingForCurrentData() {
   const settings = getSettings();
   const expenses = getExpenses();
-  const tripId = await fsCreateTrip(settings, expenses);
+  const meals = getMeals();
+  const tripId = await fsCreateTrip(settings, expenses, meals);
   sharedTripId = tripId;
   initialSyncDone = true;
   localStorage.setItem(STORAGE_KEYS.TRIP_ID, tripId);
@@ -71,9 +76,11 @@ async function enableSharingForCurrentData() {
   window.history.replaceState({}, '', url);
   cachedSettings = settings;
   cachedExpenses = expenses;
+  cachedMeals = meals;
   startSharedSync(() => {}, () => {
     renderDashboardScreen();
     renderExpenseListScreen();
+    renderMealPlanScreen();
   });
   return shareUrlForTrip(tripId);
 }
@@ -84,12 +91,14 @@ async function enableSharingForCurrentData() {
 function disableSharing() {
   const settings = cachedSettings;
   const expenses = cachedExpenses;
+  const meals = cachedMeals;
   unsubscribeFromTrip();
   sharedTripId = null;
   initialSyncDone = false;
   localStorage.removeItem(STORAGE_KEYS.TRIP_ID);
   if (settings) localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+  localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(meals));
 }
 
 function getSettings() {
@@ -165,8 +174,42 @@ function getExpenseById(id) {
   return getExpenses().find(e => e.id === id) || null;
 }
 
+function getMeals() {
+  if (isSharedMode()) return cachedMeals;
+  const raw = localStorage.getItem(STORAGE_KEYS.MEALS);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveMeals(meals) {
+  localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(meals));
+}
+
+function addMeal(meal) {
+  const newMeal = { ...meal, id: generateId() };
+  if (isSharedMode()) {
+    cachedMeals = [...cachedMeals, newMeal];
+    fsSetMeal(sharedTripId, newMeal.id, meal);
+    return newMeal;
+  }
+  const meals = getMeals();
+  meals.push(newMeal);
+  saveMeals(meals);
+  return newMeal;
+}
+
+function deleteMeal(id) {
+  if (isSharedMode()) {
+    cachedMeals = cachedMeals.filter(m => m.id !== id);
+    fsDeleteMeal(sharedTripId, id);
+    return;
+  }
+  const meals = getMeals().filter(m => m.id !== id);
+  saveMeals(meals);
+}
+
 function resetAllData() {
   if (isSharedMode()) disableSharing();
   localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   localStorage.removeItem(STORAGE_KEYS.EXPENSES);
+  localStorage.removeItem(STORAGE_KEYS.MEALS);
 }

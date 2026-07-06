@@ -373,3 +373,116 @@ function renderDateRangeSheet(state) {
     <button type="button" class="btn-primary" id="dp-confirm" ${state.start && state.end ? '' : 'disabled'}>확인</button>
   `;
 }
+
+// Which day tab is showing in the 맛집 screen. Reset to null so the first
+// render picks today (if it's within the trip) or the trip's first day.
+let mealPlanSelectedDate = null;
+
+function renderMealPlanScreen() {
+  const settings = getSettings();
+  const container = document.getElementById('screen-meals');
+  if (!settings || !settings.tripStartDate || !settings.tripEndDate) {
+    container.innerHTML = `
+      <div class="ios-header"><h1 class="ios-large-title">맛집</h1></div>
+      <div class="empty-state">
+        <div class="empty-icon">${ICON_INFO}</div>
+        <div class="empty-text">먼저 설정 화면에서<br>여행 기간을 입력해주세요.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const days = buildTripDayList(settings.tripStartDate, settings.tripEndDate);
+  if (!mealPlanSelectedDate || !days.some(d => d.date === mealPlanSelectedDate)) {
+    const today = todayYmd();
+    mealPlanSelectedDate = days.some(d => d.date === today) ? today : days[0]?.date;
+  }
+
+  const meals = getMeals();
+
+  container.innerHTML = `
+    <div class="ios-header"><h1 class="ios-large-title">맛집</h1></div>
+    <div class="ios-chip-row" id="meal-day-tabs" style="margin-bottom:16px">
+      ${days.map(d => {
+        const [, m, day] = d.date.split('-');
+        return `<button type="button" class="ios-chip meal-day-tab ${d.date === mealPlanSelectedDate ? 'active' : ''}" data-date="${d.date}">${d.dayNum}일차 (${Number(m)}/${Number(day)})</button>`;
+      }).join('')}
+    </div>
+    ${MEAL_SLOTS.map(slot => {
+      const entries = meals.filter(m => m.date === mealPlanSelectedDate && m.slot === slot.id);
+      return `
+        <h3 class="section-title">${slot.label}</h3>
+        <div class="card-section">
+          ${entries.length ? entries.map(m => mealEntryHtml(m)).join('') : '<div class="card-section-pad"><p class="field-hint" style="margin:0">아직 추천이 없어요.</p></div>'}
+          <button type="button" class="meal-add-row" data-date="${mealPlanSelectedDate}" data-slot="${slot.id}">${ICON_PLUS} 추가</button>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+function mealEntryHtml(m) {
+  return `
+    <div class="meal-entry">
+      <div class="meal-entry-info">
+        <div class="meal-entry-name">${escapeHtml(m.name)}</div>
+        ${m.address ? `<div class="meal-entry-address">${escapeHtml(m.address)}</div>` : ''}
+        ${m.memo ? `<div class="meal-entry-memo">${escapeHtml(m.memo)}</div>` : ''}
+        ${m.suggestedBy ? `<div class="meal-entry-by">${escapeHtml(m.suggestedBy)} 추천</div>` : ''}
+      </div>
+      ${m.placeUrl ? `<button type="button" class="meal-map-btn" data-url="${escapeHtml(m.placeUrl)}">지도</button>` : ''}
+      <button type="button" class="meal-delete-btn" data-id="${m.id}" aria-label="삭제">✕</button>
+    </div>
+  `;
+}
+
+function renderMealAddSheetBody(state) {
+  const container = document.getElementById('meal-add-body');
+  const slotLabel = MEAL_SLOTS.find(s => s.id === state.slot)?.label ?? '';
+  document.getElementById('meal-add-title').textContent = `${slotLabel} 맛집 추가`;
+
+  container.innerHTML = `
+    ${isKakaoMapConfigured() ? `
+      <label class="field-label" style="margin-top:0">식당 검색 (카카오맵)</label>
+      <input type="text" id="input-meal-search" placeholder="식당 이름으로 검색" autocomplete="off">
+      <div id="meal-search-results"></div>
+    ` : `
+      <p class="field-hint" style="margin:0 0 12px">카카오맵 연동 준비 중이에요. 식당 이름은 아래에 직접 입력해주세요.</p>
+    `}
+
+    ${state.selectedPlace ? `
+      <div class="meal-selected-place">
+        <div class="meal-selected-place-name">${escapeHtml(state.selectedPlace.name)}</div>
+        <div class="meal-selected-place-address">${escapeHtml(state.selectedPlace.address || '')}</div>
+      </div>
+    ` : ''}
+
+    <label class="field-label" for="input-meal-name">식당/메뉴 이름</label>
+    <input type="text" id="input-meal-name" placeholder="예: OO식당" value="${escapeHtml(state.selectedPlace?.name ?? state.name ?? '')}">
+
+    <label class="field-label" for="input-meal-memo">메모 (선택)</label>
+    <input type="text" id="input-meal-memo" placeholder="예: 팟타이 추천" value="${escapeHtml(state.memo ?? '')}">
+
+    <label class="field-label" for="input-meal-suggester">추천인 (선택)</label>
+    <input type="text" id="input-meal-suggester" placeholder="이름" value="${escapeHtml(state.suggestedBy ?? '')}">
+
+    <button type="button" class="btn-primary" id="btn-save-meal">추가</button>
+  `;
+}
+
+function mealSearchResultsHtml(results) {
+  if (!results) return '';
+  if (results.length === 0) {
+    return '<p class="field-hint" style="margin:6px 0 0">검색 결과가 없어요.</p>';
+  }
+  return `
+    <div class="meal-search-results">
+      ${results.map((p, i) => `
+        <button type="button" class="meal-search-result" data-index="${i}">
+          <span class="meal-search-result-name">${escapeHtml(p.name)}</span>
+          <span class="meal-search-result-address">${escapeHtml(p.address || '')}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}

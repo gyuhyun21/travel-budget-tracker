@@ -23,7 +23,7 @@ function shareUrlForTrip(tripId) {
   return url.toString();
 }
 
-async function fsCreateTrip(settings, expenses) {
+async function fsCreateTrip(settings, expenses, meals) {
   await window.firebaseReady;
   const tripId = generateShortId();
   await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId), {
@@ -33,6 +33,10 @@ async function fsCreateTrip(settings, expenses) {
   for (const expense of expenses) {
     const { id, ...data } = expense;
     await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'expenses', id), data);
+  }
+  for (const meal of meals) {
+    const { id, ...data } = meal;
+    await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id), data);
   }
   return tripId;
 }
@@ -60,10 +64,21 @@ async function fsDeleteExpense(tripId, id) {
   await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'expenses', id));
 }
 
+async function fsSetMeal(tripId, id, data) {
+  await window.firebaseReady;
+  await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id), data);
+}
+
+async function fsDeleteMeal(tripId, id) {
+  await window.firebaseReady;
+  await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id));
+}
+
 let unsubSettings = null;
 let unsubExpenses = null;
+let unsubMeals = null;
 
-function subscribeToTrip(tripId, { onSettings, onExpenses }) {
+function subscribeToTrip(tripId, { onSettings, onExpenses, onMeals }) {
   window.firebaseReady.then(() => {
     unsubSettings = window.fsOnSnapshot(window.fsDoc(window.fsDb, 'trips', tripId), (snap) => {
       onSettings(snap.exists() ? snap.data() : null);
@@ -72,10 +87,15 @@ function subscribeToTrip(tripId, { onSettings, onExpenses }) {
       window.fsCollection(window.fsDb, 'trips', tripId, 'expenses'),
       (snap) => onExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
+    unsubMeals = window.fsOnSnapshot(
+      window.fsCollection(window.fsDb, 'trips', tripId, 'meals'),
+      (snap) => onMeals(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
   });
 }
 
 function unsubscribeFromTrip() {
   if (unsubSettings) { unsubSettings(); unsubSettings = null; }
   if (unsubExpenses) { unsubExpenses(); unsubExpenses = null; }
+  if (unsubMeals) { unsubMeals(); unsubMeals = null; }
 }
