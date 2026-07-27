@@ -428,16 +428,16 @@ function renderDateRangeSheet(state) {
   `;
 }
 
-// Which day tab is showing in the 뭐먹? screen. Reset to null so the first
+// Which day tab is showing in the 일정 screen. Reset to null so the first
 // render picks today (if it's within the trip) or the trip's first day.
-let mealPlanSelectedDate = null;
+let scheduleSelectedDate = null;
 
-function renderMealPlanScreen() {
+function renderScheduleScreen() {
   const settings = getSettings();
-  const container = document.getElementById('screen-meals');
+  const container = document.getElementById('screen-schedule');
   if (!settings || !settings.tripStartDate || !settings.tripEndDate) {
     container.innerHTML = `
-      <div class="ios-header"><h1 class="ios-large-title">뭐먹?</h1></div>
+      <div class="ios-header"><h1 class="ios-large-title">일정</h1></div>
       <div class="empty-state">
         <div class="empty-icon">${ICON_INFO}</div>
         <div class="empty-text">먼저 설정 화면에서<br>여행 기간을 입력해주세요.</div>
@@ -447,91 +447,111 @@ function renderMealPlanScreen() {
   }
 
   const days = buildTripDayList(settings.tripStartDate, settings.tripEndDate);
-  if (!mealPlanSelectedDate || !days.some(d => d.date === mealPlanSelectedDate)) {
+  if (!scheduleSelectedDate || !days.some(d => d.date === scheduleSelectedDate)) {
     const today = todayYmd();
-    mealPlanSelectedDate = days.some(d => d.date === today) ? today : days[0]?.date;
+    scheduleSelectedDate = days.some(d => d.date === today) ? today : days[0]?.date;
   }
 
-  const meals = getMeals();
+  const items = getScheduleItems();
 
   container.innerHTML = `
-    <div class="ios-header"><h1 class="ios-large-title">뭐먹?</h1></div>
-    <div class="ios-chip-row" id="meal-day-tabs" style="margin-bottom:16px">
+    <div class="ios-header"><h1 class="ios-large-title">일정</h1></div>
+    <div class="ios-chip-row" id="schedule-day-tabs" style="margin-bottom:16px">
       ${days.map(d => {
         const [, m, day] = d.date.split('-');
-        return `<button type="button" class="ios-chip meal-day-tab ${d.date === mealPlanSelectedDate ? 'active' : ''}" data-date="${d.date}">${d.dayNum}일차 (${Number(m)}/${Number(day)})</button>`;
+        return `<button type="button" class="ios-chip schedule-day-tab ${d.date === scheduleSelectedDate ? 'active' : ''}" data-date="${d.date}">${d.dayNum}일차 (${Number(m)}/${Number(day)})</button>`;
       }).join('')}
     </div>
-    ${MEAL_SLOTS.map(slot => {
-      const entries = meals.filter(m => m.date === mealPlanSelectedDate && m.slot === slot.id);
-      return `
-        <h3 class="section-title">${slot.label}</h3>
-        <div class="card-section">
-          ${entries.length ? entries.map(m => mealEntryHtml(m)).join('') : '<div class="card-section-pad"><p class="field-hint" style="margin:0">아직 추천이 없어요.</p></div>'}
-          <button type="button" class="meal-add-row" data-date="${mealPlanSelectedDate}" data-slot="${slot.id}">${ICON_PLUS} 추가</button>
-        </div>
-      `;
-    }).join('')}
-  `;
-}
-
-function mealEntryHtml(m) {
-  return `
-    <div class="meal-entry">
-      <div class="meal-entry-info">
-        <div class="meal-entry-name">${escapeHtml(m.name)}</div>
-        ${m.address ? `<div class="meal-entry-address">${escapeHtml(m.address)}</div>` : ''}
-        ${m.memo ? `<div class="meal-entry-memo">${escapeHtml(m.memo)}</div>` : ''}
-        ${m.suggestedBy ? `<div class="meal-entry-by">${escapeHtml(m.suggestedBy)} 추천</div>` : ''}
-      </div>
-      ${m.placeUrl ? `<button type="button" class="meal-map-btn" data-url="${escapeHtml(m.placeUrl)}">지도</button>` : ''}
-      <button type="button" class="meal-delete-btn" data-id="${m.id}" aria-label="삭제">✕</button>
+    <div class="card-section">
+      ${SCHEDULE_HOURS.map(h => {
+        const entries = items.filter(i => i.date === scheduleSelectedDate && i.hour === h.hour);
+        return `
+          <div class="schedule-row">
+            <div class="schedule-time">${h.label}</div>
+            <div class="schedule-arrow">${ICON_CHEVRON}</div>
+            <div class="schedule-content">
+              ${entries.length ? entries.map(i => scheduleEntryHtml(i)).join('') : `<button type="button" class="schedule-add-row" data-date="${scheduleSelectedDate}" data-hour="${h.hour}">${ICON_PLUS} 추가</button>`}
+              ${entries.length ? `<button type="button" class="schedule-add-row schedule-add-row-more" data-date="${scheduleSelectedDate}" data-hour="${h.hour}">${ICON_PLUS} 더 추가</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
 
-function renderMealAddSheetBody(state) {
-  const container = document.getElementById('meal-add-body');
-  const slotLabel = MEAL_SLOTS.find(s => s.id === state.slot)?.label ?? '';
-  document.getElementById('meal-add-title').textContent = `${slotLabel} 추가`;
-  const isRestaurant = (state.mode || 'restaurant') === 'restaurant';
+function scheduleEntryHtml(item) {
+  const docs = (item.documentIds || []).map(id => getDocumentById(id)).filter(Boolean);
+  return `
+    <div class="schedule-entry" data-id="${item.id}">
+      <div class="schedule-entry-info">
+        <div class="schedule-entry-name">${escapeHtml(item.name)}</div>
+        ${item.address ? `<div class="schedule-entry-address">${escapeHtml(item.address)}</div>` : ''}
+        ${item.memo ? `<div class="schedule-entry-memo">${escapeHtml(item.memo)}</div>` : ''}
+        ${docs.length ? `<div class="schedule-entry-docs">${docs.map(d => `<span class="schedule-doc-badge">${getDocumentCategoryById(d.category).icon} ${escapeHtml(d.fileName)}</span>`).join('')}</div>` : ''}
+        ${item.createdBy ? `<div class="schedule-entry-by">${escapeHtml(item.createdBy)} 등록</div>` : ''}
+      </div>
+      <div class="schedule-entry-actions">
+        ${item.placeUrl ? `<button type="button" class="schedule-map-btn" data-url="${escapeHtml(item.placeUrl)}">지도</button>` : ''}
+        <button type="button" class="schedule-edit-btn" data-id="${item.id}" aria-label="수정">${ICON_CHEVRON}</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderScheduleAddSheetBody(state) {
+  const container = document.getElementById('schedule-add-body');
+  const hourLabel = SCHEDULE_HOURS.find(h => h.hour === state.hour)?.label ?? '';
+  document.getElementById('schedule-add-title').textContent = state.id ? `${hourLabel} 일정 수정` : `${hourLabel} 일정 추가`;
 
   container.innerHTML = `
-    <div class="ios-segment" id="meal-mode-segment" style="margin-bottom:16px">
-      <div class="ios-segment-thumb" style="--count:2; --index:${isRestaurant ? 0 : 1}"></div>
-      <button type="button" class="ios-segment-btn meal-mode-btn ${isRestaurant ? 'active' : ''}" data-mode="restaurant">식당</button>
-      <button type="button" class="ios-segment-btn meal-mode-btn ${isRestaurant ? '' : 'active'}" data-mode="menu">메뉴만 (캠핑 등)</button>
-    </div>
-
-    ${isRestaurant ? (isKakaoMapConfigured() ? `
-      <label class="field-label">식당 검색 (카카오맵)</label>
-      <input type="text" id="input-meal-search" placeholder="식당 이름으로 검색" autocomplete="off">
-      <div id="meal-search-results"></div>
+    ${isGoogleMapsConfigured() ? `
+      <label class="field-label" style="margin-top:0">장소 검색 (구글맵)</label>
+      <input type="text" id="input-schedule-search" placeholder="장소 이름으로 검색" autocomplete="off">
+      <div id="schedule-search-results"></div>
     ` : `
-      <p class="field-hint" style="margin:0 0 12px">카카오맵 연동 준비 중이에요. 식당 이름은 아래에 직접 입력해주세요.</p>
-    `) : ''}
+      <p class="field-hint" style="margin:0 0 12px">구글맵 연동 준비 중이에요. 장소 이름은 아래에 직접 입력해주세요.</p>
+    `}
 
-    ${isRestaurant && state.selectedPlace ? `
-      <div class="meal-selected-place">
-        <div class="meal-selected-place-name">${escapeHtml(state.selectedPlace.name)}</div>
-        <div class="meal-selected-place-address">${escapeHtml(state.selectedPlace.address || '')}</div>
+    ${state.selectedPlace ? `
+      <div class="schedule-selected-place">
+        <div class="schedule-selected-place-name">${escapeHtml(state.selectedPlace.name)}</div>
+        <div class="schedule-selected-place-address">${escapeHtml(state.selectedPlace.address || '')}</div>
       </div>
     ` : ''}
 
-    <label class="field-label" for="input-meal-name">${isRestaurant ? '식당 이름' : '메뉴/음식 이름'}</label>
-    <input type="text" id="input-meal-name" placeholder="${isRestaurant ? '예: OO식당' : '예: 김치찌개, 라면'}" value="${escapeHtml((isRestaurant ? state.selectedPlace?.name : null) ?? state.name ?? '')}">
+    <label class="field-label" for="input-schedule-name">장소/일정 이름</label>
+    <input type="text" id="input-schedule-name" placeholder="예: OO해변, 시내 산책" value="${escapeHtml(state.selectedPlace?.name ?? state.name ?? '')}">
 
-    <label class="field-label" for="input-meal-memo">메모 (선택)</label>
-    <input type="text" id="input-meal-memo" placeholder="예: 팟타이 추천" value="${escapeHtml(state.memo ?? '')}">
+    <label class="field-label" for="input-schedule-memo">메모 (선택)</label>
+    <input type="text" id="input-schedule-memo" placeholder="예: 예약 12시, 창가 자리 요청" value="${escapeHtml(state.memo ?? '')}">
 
-    <label class="field-label" for="input-meal-suggester">추천인 (선택)</label>
-    <input type="text" id="input-meal-suggester" placeholder="이름" value="${escapeHtml(state.suggestedBy ?? '')}">
+    <label class="field-label">첨부 문서 (선택)</label>
+    ${renderScheduleDocPicker(state)}
 
-    <button type="button" class="btn-primary" id="btn-save-meal">추가</button>
+    <button type="button" class="btn-primary" id="btn-save-schedule">${state.id ? '수정' : '추가'}</button>
+    ${state.id ? '<button type="button" class="btn-danger" id="btn-delete-schedule">삭제</button>' : ''}
   `;
 }
 
-function mealSearchResultsHtml(results) {
+function renderScheduleDocPicker(state) {
+  const documents = getDocuments();
+  const selectedIds = state.documentIds || [];
+  return `
+    <div class="ios-chip-row schedule-doc-picker" style="margin-bottom:10px">
+      ${documents.map(d => `
+        <button type="button" class="ios-chip schedule-doc-chip ${selectedIds.includes(d.id) ? 'active' : ''}" data-id="${d.id}">
+          ${getDocumentCategoryById(d.category).icon} ${escapeHtml(d.fileName)}
+        </button>
+      `).join('')}
+      <button type="button" class="ios-chip" id="btn-schedule-upload-doc">${ICON_PLUS} 새 문서 업로드</button>
+    </div>
+    <input type="file" id="input-schedule-doc-file" accept="image/*,.pdf" style="display:none">
+    <div id="schedule-inline-upload">${scheduleInlineUploadHtml(state)}</div>
+  `;
+}
+
+function scheduleSearchResultsHtml(results) {
   if (!results) return '';
   if (results.length === 0) {
     return '<p class="field-hint" style="margin:6px 0 0">검색 결과가 없어요.</p>';
@@ -539,12 +559,102 @@ function mealSearchResultsHtml(results) {
   return `
     <div class="meal-search-results">
       ${results.map((p, i) => `
-        <button type="button" class="meal-search-result" data-index="${i}">
+        <button type="button" class="schedule-search-result" data-index="${i}">
           <span class="meal-search-result-name">${escapeHtml(p.name)}</span>
           <span class="meal-search-result-address">${escapeHtml(p.address || '')}</span>
         </button>
       `).join('')}
     </div>
+  `;
+}
+
+function scheduleInlineUploadHtml(state) {
+  if (!state.inlineUpload) return '';
+  const u = state.inlineUpload;
+  if (u.status === 'processing') {
+    return `<p class="field-hint" style="margin:0 0 12px">${escapeHtml(u.message || '문서 처리 중...')}</p>`;
+  }
+  return `
+    <div class="doc-inline-confirm">
+      <div class="doc-inline-confirm-name">${escapeHtml(u.fileName)}</div>
+      <label class="field-label" style="margin-top:8px">분류</label>
+      <div class="ios-chip-row">
+        ${DOCUMENT_CATEGORIES.map(c => `<button type="button" class="ios-chip doc-inline-category-chip ${u.category === c.id ? 'active' : ''}" data-id="${c.id}">${c.icon} ${c.label}</button>`).join('')}
+      </div>
+      <button type="button" class="btn-primary" id="btn-confirm-inline-doc" style="margin-top:8px">문서함에 저장하고 첨부</button>
+    </div>
+  `;
+}
+
+/* ---------- 문서함 (documents) ---------- */
+
+let documentCategoryFilter = 'all';
+
+function renderDocumentsScreen() {
+  const container = document.getElementById('screen-documents');
+  const documents = getDocuments();
+  const filtered = documentCategoryFilter === 'all' ? documents : documents.filter(d => d.category === documentCategoryFilter);
+
+  container.innerHTML = `
+    <div class="ios-header"><h1 class="ios-large-title">문서함</h1></div>
+    <button type="button" class="btn-primary btn-add-main" id="btn-add-document">
+      <span class="btn-icon-inline">${ICON_PLUS}</span>문서 업로드
+    </button>
+    <div class="ios-chip-row" id="document-category-tabs" style="margin:14px 0 16px">
+      <button type="button" class="ios-chip document-category-tab ${documentCategoryFilter === 'all' ? 'active' : ''}" data-id="all">전체</button>
+      ${DOCUMENT_CATEGORIES.map(c => `<button type="button" class="ios-chip document-category-tab ${documentCategoryFilter === c.id ? 'active' : ''}" data-id="${c.id}">${c.icon} ${c.label}</button>`).join('')}
+    </div>
+    ${filtered.length ? `<div class="card-section">${filtered.map(d => documentCardHtml(d)).join('')}</div>` : `
+      <div class="empty-state">
+        <div class="empty-icon">${ICON_RECEIPT}</div>
+        <div class="empty-text">아직 등록된 문서가 없어요.<br>위의 + 문서 업로드로 바우처를 등록해보세요.</div>
+      </div>
+    `}
+  `;
+}
+
+function documentCardHtml(d) {
+  const category = getDocumentCategoryById(d.category);
+  return `
+    <div class="doc-card" data-id="${d.id}">
+      <div class="doc-card-icon">${category.icon}</div>
+      <div class="doc-card-info">
+        <div class="doc-card-name">${escapeHtml(d.fileName)}</div>
+        <div class="doc-card-meta">${category.label}${d.uploadedBy ? ` · ${escapeHtml(d.uploadedBy)}` : ''}</div>
+      </div>
+      <button type="button" class="doc-card-open-btn" data-id="${d.id}">보기</button>
+      <button type="button" class="doc-card-delete-btn" data-id="${d.id}" aria-label="삭제">✕</button>
+    </div>
+  `;
+}
+
+function renderDocumentUploadSheetBody(state) {
+  const container = document.getElementById('document-upload-body');
+  document.getElementById('document-upload-title').textContent = '문서 업로드';
+
+  if (!state.file) {
+    container.innerHTML = `
+      <p class="field-hint" style="margin:0 0 12px">항공권, 숙소 예약 확인서, 보험증서 같은 바우처를 올려두면 자동으로 분류하고, 동반자도 같이 볼 수 있어요.</p>
+      <input type="file" id="input-document-file" accept="image/*,.pdf" style="margin-bottom:12px">
+    `;
+    return;
+  }
+
+  if (state.status === 'processing') {
+    container.innerHTML = `<p class="field-hint" style="margin:0">${escapeHtml(state.message || '문서 처리 중...')}</p>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <label class="field-label" style="margin-top:0" for="input-document-name">파일명</label>
+    <input type="text" id="input-document-name" value="${escapeHtml(state.fileName ?? '')}">
+
+    <label class="field-label">분류 ${state.autoClassified ? '(자동 추정, 확인 후 저장해주세요)' : ''}</label>
+    <div class="ios-chip-row" id="document-category-picker">
+      ${DOCUMENT_CATEGORIES.map(c => `<button type="button" class="ios-chip document-category-chip ${state.category === c.id ? 'active' : ''}" data-id="${c.id}">${c.icon} ${c.label}</button>`).join('')}
+    </div>
+
+    <button type="button" class="btn-primary" id="btn-save-document">저장 (분류 확정)</button>
   `;
 }
 

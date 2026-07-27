@@ -663,23 +663,56 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
 
 .btn-primary[disabled] { opacity: 0.35; cursor: default; }
 
-/* ---------- 맛집 (meal plan) ---------- */
+/* ---------- 일정 (time-based schedule) ---------- */
 
-.meal-entry {
+.schedule-row {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-bottom: 0.5px solid var(--color-separator);
 }
-.card-section .meal-entry:last-of-type { border-bottom: none; }
-.meal-entry-info { flex: 1; min-width: 0; }
-.meal-entry-name { font-size: 15px; font-weight: 590; color: var(--color-ink); }
-.meal-entry-address { font-size: 12px; color: var(--color-ink-soft); margin-top: 2px; }
-.meal-entry-memo { font-size: 13px; color: var(--color-ink); margin-top: 3px; }
-.meal-entry-by { font-size: 11.5px; color: var(--color-ink-soft); margin-top: 3px; }
-.meal-map-btn {
-  flex-shrink: 0;
+.card-section .schedule-row:last-child { border-bottom: none; }
+.schedule-time {
+  flex: 0 0 44px;
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.schedule-arrow {
+  flex: 0 0 auto;
+  color: var(--color-ink-soft);
+  padding-top: 4px;
+}
+.schedule-arrow svg { width: 7px; height: 12px; }
+.schedule-content { flex: 1; min-width: 0; }
+
+.schedule-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--color-separator);
+}
+.schedule-content .schedule-entry:last-of-type { border-bottom: none; }
+.schedule-entry-info { flex: 1; min-width: 0; }
+.schedule-entry-name { font-size: 15px; font-weight: 590; color: var(--color-ink); }
+.schedule-entry-address { font-size: 12px; color: var(--color-ink-soft); margin-top: 2px; }
+.schedule-entry-memo { font-size: 13px; color: var(--color-ink); margin-top: 3px; }
+.schedule-entry-by { font-size: 11.5px; color: var(--color-ink-soft); margin-top: 3px; }
+.schedule-entry-docs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.schedule-doc-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink-soft);
+  background: var(--color-fill);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.schedule-entry-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.schedule-map-btn {
   border: none;
   background: var(--color-primary-soft);
   color: var(--color-primary);
@@ -690,41 +723,49 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   cursor: pointer;
   font-family: inherit;
 }
-.meal-delete-btn {
-  flex-shrink: 0;
+.schedule-edit-btn {
   border: none;
   background: none;
   color: var(--color-ink-soft);
-  font-size: 15px;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
 }
+.schedule-edit-btn svg { width: 7px; height: 12px; }
 
-.meal-add-row {
+.schedule-add-row {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 5px;
-  width: 100%;
   border: none;
   background: none;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 590;
-  padding: 12px 16px;
+  padding: 4px 0;
   cursor: pointer;
   font-family: inherit;
 }
-.meal-add-row svg { width: 15px; height: 15px; }
+.schedule-add-row svg { width: 13px; height: 13px; }
+.schedule-add-row-more { color: var(--color-ink-soft); margin-top: 4px; }
 
-.meal-selected-place {
+.schedule-selected-place {
   background: var(--color-success-soft);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   margin: 8px 0 4px;
 }
-.meal-selected-place-name { font-size: 14px; font-weight: 590; color: var(--color-ink); }
-.meal-selected-place-address { font-size: 12px; color: var(--color-ink-soft); margin-top: 2px; }
+.schedule-selected-place-name { font-size: 14px; font-weight: 590; color: var(--color-ink); }
+.schedule-selected-place-address { font-size: 12px; color: var(--color-ink-soft); margin-top: 2px; }
+
+.schedule-doc-picker { margin-top: 4px; }
+
+.doc-inline-confirm {
+  background: var(--color-fill);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin: 4px 0 12px;
+}
+.doc-inline-confirm-name { font-size: 13.5px; font-weight: 590; color: var(--color-ink); word-break: break-all; }
 
 .meal-search-results {
   max-height: 200px;
@@ -733,7 +774,7 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   border-radius: var(--radius-sm);
   background: var(--color-fill);
 }
-.meal-search-result {
+.meal-search-result, .schedule-search-result {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -746,7 +787,7 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   cursor: pointer;
   font-family: inherit;
 }
-.meal-search-result:last-child { border-bottom: none; }
+.meal-search-result:last-child, .schedule-search-result:last-child { border-bottom: none; }
 .meal-search-result-name { font-size: 13.5px; font-weight: 590; color: var(--color-ink); }
 .meal-search-result-address { font-size: 11.5px; color: var(--color-ink-soft); margin-top: 1px; }
 
@@ -822,6 +863,42 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
 }
 .packing-cell-unassigned {
   background: linear-gradient(135deg, #FF7AD1, #FF1E93);
+}
+
+/* ---------- 문서함 (documents) ---------- */
+
+.doc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--color-separator);
+}
+.card-section .doc-card:last-child { border-bottom: none; }
+.doc-card-icon { flex-shrink: 0; font-size: 22px; }
+.doc-card-info { flex: 1; min-width: 0; }
+.doc-card-name { font-size: 15px; font-weight: 590; color: var(--color-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-card-meta { font-size: 12px; color: var(--color-ink-soft); margin-top: 2px; }
+.doc-card-open-btn {
+  flex-shrink: 0;
+  border: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 590;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.doc-card-delete-btn {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--color-ink-soft);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
 }
 
 .spender-summary-row {

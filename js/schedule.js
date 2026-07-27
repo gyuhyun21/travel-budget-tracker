@@ -1,9 +1,8 @@
-const MEAL_SLOTS = [
-  { id: 'breakfast', label: '조식' },
-  { id: 'lunch', label: '중식' },
-  { id: 'dinner', label: '석식' },
-  { id: 'snack', label: '간식' },
-];
+// One entry per hour of the day (0-23), each carrying a display label like "09시".
+const SCHEDULE_HOURS = Array.from({ length: 24 }, (_, h) => ({
+  hour: h,
+  label: `${String(h).padStart(2, '0')}시`,
+}));
 
 // Builds one entry per calendar day between tripStartDate and tripEndDate
 // (inclusive), each carrying its 1-based day number for display (e.g. "2일차").

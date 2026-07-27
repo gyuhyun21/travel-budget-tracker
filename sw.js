@@ -1,6 +1,6 @@
 // Bump this (e.g. to 'cmb-cache-v2') whenever any file listed in ASSETS changes,
 // otherwise the service worker will keep serving stale cached files indefinitely.
-const CACHE_NAME = 'cmb-cache-v17';
+const CACHE_NAME = 'cmb-cache-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -12,11 +12,12 @@ const ASSETS = [
   './js/currency.js',
   './js/trip.js',
   './js/category.js',
+  './js/document-category.js',
   './js/ocr.js',
   './js/icons.js',
   './js/datepicker.js',
-  './js/meal.js',
-  './js/kakao-map.js',
+  './js/schedule.js',
+  './js/google-map.js',
   './js/render.js',
   './js/app.js',
   './manifest.json',

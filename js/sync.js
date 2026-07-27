@@ -23,7 +23,7 @@ function shareUrlForTrip(tripId) {
   return url.toString();
 }
 
-async function fsCreateTrip(settings, expenses, meals, packingItems) {
+async function fsCreateTrip(settings, expenses, scheduleItems, packingItems, documents) {
   await window.firebaseReady;
   const tripId = generateShortId();
   await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId), {
@@ -34,13 +34,17 @@ async function fsCreateTrip(settings, expenses, meals, packingItems) {
     const { id, ...data } = expense;
     await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'expenses', id), data);
   }
-  for (const meal of meals) {
-    const { id, ...data } = meal;
-    await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id), data);
+  for (const item of scheduleItems) {
+    const { id, ...data } = item;
+    await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'scheduleItems', id), data);
   }
   for (const item of packingItems) {
     const { id, ...data } = item;
     await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'packingItems', id), data);
+  }
+  for (const document of documents) {
+    const { id, ...data } = document;
+    await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'documents', id), data);
   }
   return tripId;
 }
@@ -68,14 +72,19 @@ async function fsDeleteExpense(tripId, id) {
   await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'expenses', id));
 }
 
-async function fsSetMeal(tripId, id, data) {
+async function fsSetScheduleItem(tripId, id, data) {
   await window.firebaseReady;
-  await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id), data);
+  await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'scheduleItems', id), data);
 }
 
-async function fsDeleteMeal(tripId, id) {
+async function fsUpdateScheduleItem(tripId, id, fields) {
   await window.firebaseReady;
-  await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'meals', id));
+  await window.fsUpdateDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'scheduleItems', id), fields);
+}
+
+async function fsDeleteScheduleItem(tripId, id) {
+  await window.firebaseReady;
+  await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'scheduleItems', id));
 }
 
 async function fsSetPackingItem(tripId, id, data) {
@@ -93,12 +102,28 @@ async function fsDeletePackingItem(tripId, id) {
   await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'packingItems', id));
 }
 
+async function fsSetDocument(tripId, id, data) {
+  await window.firebaseReady;
+  await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'documents', id), data);
+}
+
+async function fsUpdateDocument(tripId, id, fields) {
+  await window.firebaseReady;
+  await window.fsUpdateDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'documents', id), fields);
+}
+
+async function fsDeleteDocument(tripId, id) {
+  await window.firebaseReady;
+  await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'documents', id));
+}
+
 let unsubSettings = null;
 let unsubExpenses = null;
-let unsubMeals = null;
+let unsubScheduleItems = null;
 let unsubPackingItems = null;
+let unsubDocuments = null;
 
-function subscribeToTrip(tripId, { onSettings, onExpenses, onMeals, onPackingItems }) {
+function subscribeToTrip(tripId, { onSettings, onExpenses, onScheduleItems, onPackingItems, onDocuments }) {
   window.firebaseReady.then(() => {
     unsubSettings = window.fsOnSnapshot(window.fsDoc(window.fsDb, 'trips', tripId), (snap) => {
       onSettings(snap.exists() ? snap.data() : null);
@@ -107,13 +132,17 @@ function subscribeToTrip(tripId, { onSettings, onExpenses, onMeals, onPackingIte
       window.fsCollection(window.fsDb, 'trips', tripId, 'expenses'),
       (snap) => onExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
-    unsubMeals = window.fsOnSnapshot(
-      window.fsCollection(window.fsDb, 'trips', tripId, 'meals'),
-      (snap) => onMeals(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    unsubScheduleItems = window.fsOnSnapshot(
+      window.fsCollection(window.fsDb, 'trips', tripId, 'scheduleItems'),
+      (snap) => onScheduleItems(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
     unsubPackingItems = window.fsOnSnapshot(
       window.fsCollection(window.fsDb, 'trips', tripId, 'packingItems'),
       (snap) => onPackingItems(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    unsubDocuments = window.fsOnSnapshot(
+      window.fsCollection(window.fsDb, 'trips', tripId, 'documents'),
+      (snap) => onDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   });
 }
@@ -121,6 +150,7 @@ function subscribeToTrip(tripId, { onSettings, onExpenses, onMeals, onPackingIte
 function unsubscribeFromTrip() {
   if (unsubSettings) { unsubSettings(); unsubSettings = null; }
   if (unsubExpenses) { unsubExpenses(); unsubExpenses = null; }
-  if (unsubMeals) { unsubMeals(); unsubMeals = null; }
+  if (unsubScheduleItems) { unsubScheduleItems(); unsubScheduleItems = null; }
   if (unsubPackingItems) { unsubPackingItems(); unsubPackingItems = null; }
+  if (unsubDocuments) { unsubDocuments(); unsubDocuments = null; }
 }

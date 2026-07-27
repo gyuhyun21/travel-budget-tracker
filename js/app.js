@@ -8,8 +8,9 @@ function showScreen(name) {
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
   if (name === 'expense-list') renderExpenseListScreen();
-  if (name === 'meals') renderMealPlanScreen();
+  if (name === 'schedule') renderScheduleScreen();
   if (name === 'packing') renderPackingScreen();
+  if (name === 'documents') renderDocumentsScreen();
 }
 
 function bindSettingsForm() {
@@ -335,7 +336,7 @@ function bindBackupButtons() {
 
   container.addEventListener('click', (e) => {
     if (e.target.id !== 'btn-export') return;
-    const data = { settings: getSettings(), expenses: getExpenses(), meals: getMeals(), packingItems: getPackingItems() };
+    const data = { settings: getSettings(), expenses: getExpenses(), scheduleItems: getScheduleItems(), packingItems: getPackingItems(), documents: getDocuments() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -361,12 +362,14 @@ function bindBackupButtons() {
         if (!confirm('기존 데이터를 덮어씁니다. 계속할까요?')) return;
         saveSettings(data.settings);
         saveExpenses(data.expenses);
-        saveMeals(Array.isArray(data.meals) ? data.meals : []);
+        saveScheduleItems(Array.isArray(data.scheduleItems) ? data.scheduleItems : []);
         savePackingItems(Array.isArray(data.packingItems) ? data.packingItems : []);
+        saveDocuments(Array.isArray(data.documents) ? data.documents : []);
         renderSettingsScreen();
         renderDashboardScreen();
-        renderMealPlanScreen();
+        renderScheduleScreen();
         renderPackingScreen();
+        renderDocumentsScreen();
         const restored = document.getElementById('settings-message');
         restored.textContent = '복원되었습니다.';
         restored.style.display = 'block';
@@ -393,120 +396,326 @@ function bindResetButton() {
   });
 }
 
-function bindMealPlanScreen() {
-  document.getElementById('screen-meals').addEventListener('click', (e) => {
-    const dayTab = e.target.closest('.meal-day-tab');
+function bindScheduleScreen() {
+  document.getElementById('screen-schedule').addEventListener('click', (e) => {
+    const dayTab = e.target.closest('.schedule-day-tab');
     if (dayTab) {
-      mealPlanSelectedDate = dayTab.dataset.date;
-      renderMealPlanScreen();
+      scheduleSelectedDate = dayTab.dataset.date;
+      renderScheduleScreen();
       return;
     }
 
-    const addRow = e.target.closest('.meal-add-row');
+    const addRow = e.target.closest('.schedule-add-row');
     if (addRow) {
-      openMealAddSheet(addRow.dataset.date, addRow.dataset.slot);
+      openScheduleAddSheet(addRow.dataset.date, Number(addRow.dataset.hour));
       return;
     }
 
-    const mapBtn = e.target.closest('.meal-map-btn');
+    const mapBtn = e.target.closest('.schedule-map-btn');
     if (mapBtn) {
       window.open(mapBtn.dataset.url, '_blank', 'noopener');
       return;
     }
 
-    const deleteBtn = e.target.closest('.meal-delete-btn');
-    if (deleteBtn) {
-      if (!confirm('이 추천을 삭제할까요?')) return;
-      deleteMeal(deleteBtn.dataset.id);
-      renderMealPlanScreen();
+    const editBtn = e.target.closest('.schedule-edit-btn');
+    if (editBtn) {
+      const item = getScheduleItems().find(i => i.id === editBtn.dataset.id);
+      if (item) openScheduleAddSheet(item.date, item.hour, item.id);
     }
   });
 }
 
-let mealAddState = null;
-let mealSearchDebounceTimer = null;
+let scheduleAddState = null;
+let scheduleSearchDebounceTimer = null;
 
-function openMealAddSheet(date, slot) {
-  mealAddState = { date, slot, mode: 'restaurant', selectedPlace: null, searchResults: null, suggestedBy: getUserName() };
-  renderMealAddSheetBody(mealAddState);
-  document.getElementById('meal-add-sheet').style.display = 'flex';
+function openScheduleAddSheet(date, hour, existingId = null) {
+  const existing = existingId ? getScheduleItems().find(i => i.id === existingId) : null;
+  scheduleAddState = existing
+    ? {
+        id: existing.id, date, hour,
+        name: existing.name, memo: existing.memo,
+        selectedPlace: existing.address ? { name: existing.name, address: existing.address, lat: existing.lat, lng: existing.lng, placeUrl: existing.placeUrl } : null,
+        searchResults: null,
+        documentIds: [...(existing.documentIds || [])],
+        inlineUpload: null
+      }
+    : { id: null, date, hour, name: '', memo: '', selectedPlace: null, searchResults: null, documentIds: [], inlineUpload: null };
+  renderScheduleAddSheetBody(scheduleAddState);
+  document.getElementById('schedule-add-sheet').style.display = 'flex';
 }
 
-function closeMealAddSheet() {
-  document.getElementById('meal-add-sheet').style.display = 'none';
-  mealAddState = null;
+function closeScheduleAddSheet() {
+  document.getElementById('schedule-add-sheet').style.display = 'none';
+  scheduleAddState = null;
 }
 
-function bindMealAddSheet() {
-  const overlay = document.getElementById('meal-add-sheet');
+// Shared by the 문서함 upload sheet and the inline "새 문서 업로드" flow inside
+// the schedule sheet: compresses/reads the file, runs OCR-based category
+// guessing for images (skipped for PDFs, which Tesseract can't read), and
+// rejects files that would still be too large for a Firestore document.
+async function processDocumentFile(file, onProgress) {
+  const isImage = file.type.startsWith('image/');
+  let dataUrl;
+  let category = 'other';
+  if (isImage) {
+    onProgress?.('이미지 압축 중...');
+    dataUrl = await compressImageToDataUrl(file);
+    try {
+      onProgress?.('문서 내용 인식 중...');
+      const text = await recognizeReceiptImage(file, (pct) => onProgress?.(`문서 내용 인식 중... ${pct}%`));
+      category = guessDocumentCategoryFromText(text);
+    } catch (err) {
+      category = 'other';
+    }
+  } else {
+    onProgress?.('파일 읽는 중...');
+    dataUrl = await fileToDataUrl(file);
+  }
+  if (dataUrl.length > 900 * 1024) {
+    throw new Error('FILE_TOO_LARGE');
+  }
+  return { fileName: file.name, mimeType: file.type, dataUrl, category };
+}
+
+function bindScheduleAddSheet() {
+  const overlay = document.getElementById('schedule-add-sheet');
 
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target.id === 'meal-add-close') {
-      closeMealAddSheet();
+    if (e.target === overlay || e.target.id === 'schedule-add-close') {
+      closeScheduleAddSheet();
       return;
     }
 
-    const resultBtn = e.target.closest('.meal-search-result');
-    if (resultBtn && mealAddState) {
-      mealAddState.selectedPlace = mealAddState.searchResults[Number(resultBtn.dataset.index)];
-      renderMealAddSheetBody(mealAddState);
+    const resultBtn = e.target.closest('.schedule-search-result');
+    if (resultBtn && scheduleAddState) {
+      scheduleAddState.selectedPlace = scheduleAddState.searchResults[Number(resultBtn.dataset.index)];
+      renderScheduleAddSheetBody(scheduleAddState);
       return;
     }
 
-    const modeBtn = e.target.closest('.meal-mode-btn');
-    if (modeBtn && mealAddState) {
-      mealAddState.mode = modeBtn.dataset.mode;
-      mealAddState.selectedPlace = null;
-      mealAddState.searchResults = null;
-      renderMealAddSheetBody(mealAddState);
+    const docChip = e.target.closest('.schedule-doc-chip');
+    if (docChip && scheduleAddState) {
+      const id = docChip.dataset.id;
+      const idx = scheduleAddState.documentIds.indexOf(id);
+      if (idx === -1) scheduleAddState.documentIds.push(id);
+      else scheduleAddState.documentIds.splice(idx, 1);
+      renderScheduleAddSheetBody(scheduleAddState);
       return;
     }
 
-    if (e.target.id === 'btn-save-meal') {
-      const name = document.getElementById('input-meal-name').value.trim();
+    if (e.target.id === 'btn-schedule-upload-doc') {
+      document.getElementById('input-schedule-doc-file').click();
+      return;
+    }
+
+    const inlineCategoryChip = e.target.closest('.doc-inline-category-chip');
+    if (inlineCategoryChip && scheduleAddState?.inlineUpload) {
+      scheduleAddState.inlineUpload.category = inlineCategoryChip.dataset.id;
+      renderScheduleAddSheetBody(scheduleAddState);
+      return;
+    }
+
+    if (e.target.id === 'btn-confirm-inline-doc' && scheduleAddState?.inlineUpload) {
+      const u = scheduleAddState.inlineUpload;
+      const newDoc = addDocument({
+        fileName: u.fileName,
+        mimeType: u.mimeType,
+        dataUrl: u.dataUrl,
+        category: u.category,
+        uploadedBy: getUserName(),
+        createdAt: Date.now()
+      });
+      scheduleAddState.documentIds.push(newDoc.id);
+      scheduleAddState.inlineUpload = null;
+      renderScheduleAddSheetBody(scheduleAddState);
+      return;
+    }
+
+    if (e.target.id === 'btn-save-schedule') {
+      const name = document.getElementById('input-schedule-name').value.trim();
       if (!name) {
         alert('이름을 입력해주세요.');
         return;
       }
-      const memo = document.getElementById('input-meal-memo').value.trim();
-      const suggestedBy = document.getElementById('input-meal-suggester').value.trim();
-      const isRestaurant = mealAddState.mode === 'restaurant';
-      const place = isRestaurant ? mealAddState.selectedPlace : null;
-      addMeal({
-        date: mealAddState.date,
-        slot: mealAddState.slot,
+      const memo = document.getElementById('input-schedule-memo').value.trim();
+      const place = scheduleAddState.selectedPlace;
+      const fields = {
+        date: scheduleAddState.date,
+        hour: scheduleAddState.hour,
         name,
         memo,
-        suggestedBy,
         address: place?.address || '',
         placeUrl: place?.placeUrl || '',
-        lat: place?.lat || null,
-        lng: place?.lng || null
-      });
-      closeMealAddSheet();
-      renderMealPlanScreen();
+        lat: place?.lat ?? null,
+        lng: place?.lng ?? null,
+        documentIds: scheduleAddState.documentIds
+      };
+      if (scheduleAddState.id) {
+        updateScheduleItem(scheduleAddState.id, fields);
+      } else {
+        addScheduleItem({ ...fields, createdBy: getUserName() });
+      }
+      closeScheduleAddSheet();
+      renderScheduleScreen();
+      return;
+    }
+
+    if (e.target.id === 'btn-delete-schedule') {
+      if (!confirm('이 일정을 삭제할까요?')) return;
+      deleteScheduleItem(scheduleAddState.id);
+      closeScheduleAddSheet();
+      renderScheduleScreen();
     }
   });
 
   overlay.addEventListener('input', (e) => {
-    if (e.target.id !== 'input-meal-search') return;
+    if (e.target.id !== 'input-schedule-search') return;
     const keyword = e.target.value.trim();
-    clearTimeout(mealSearchDebounceTimer);
-    const resultsEl = document.getElementById('meal-search-results');
+    clearTimeout(scheduleSearchDebounceTimer);
+    const resultsEl = document.getElementById('schedule-search-results');
     if (!keyword) {
-      mealAddState.searchResults = null;
+      scheduleAddState.searchResults = null;
       resultsEl.innerHTML = '';
       return;
     }
-    mealSearchDebounceTimer = setTimeout(async () => {
+    scheduleSearchDebounceTimer = setTimeout(async () => {
       try {
-        const results = await searchKakaoPlaces(keyword);
-        mealAddState.searchResults = results;
-        resultsEl.innerHTML = mealSearchResultsHtml(results);
+        const results = await searchGooglePlaces(keyword);
+        scheduleAddState.searchResults = results;
+        resultsEl.innerHTML = scheduleSearchResultsHtml(results);
       } catch (err) {
         resultsEl.innerHTML = '<p class="field-hint" style="margin:6px 0 0">검색을 사용할 수 없어요. 이름을 직접 입력해주세요.</p>';
       }
     }, 400);
+  });
+
+  overlay.addEventListener('change', async (e) => {
+    if (e.target.id !== 'input-schedule-doc-file') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    scheduleAddState.inlineUpload = { status: 'processing', message: '문서 처리 중...' };
+    renderScheduleAddSheetBody(scheduleAddState);
+    try {
+      const processed = await processDocumentFile(file, (msg) => {
+        if (scheduleAddState.inlineUpload) {
+          scheduleAddState.inlineUpload.message = msg;
+        }
+      });
+      scheduleAddState.inlineUpload = { status: 'ready', ...processed };
+    } catch (err) {
+      alert(err.message === 'FILE_TOO_LARGE' ? '파일이 너무 커요. 더 작은 파일로 다시 시도해주세요.' : '문서를 처리하지 못했습니다. 다시 시도해주세요.');
+      scheduleAddState.inlineUpload = null;
+    } finally {
+      e.target.value = '';
+      renderScheduleAddSheetBody(scheduleAddState);
+    }
+  });
+}
+
+function bindDocumentsScreen() {
+  document.getElementById('screen-documents').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-add-document')) {
+      openDocumentUploadSheet();
+      return;
+    }
+
+    const tab = e.target.closest('.document-category-tab');
+    if (tab) {
+      documentCategoryFilter = tab.dataset.id;
+      renderDocumentsScreen();
+      return;
+    }
+
+    const openBtn = e.target.closest('.doc-card-open-btn');
+    if (openBtn) {
+      const doc = getDocumentById(openBtn.dataset.id);
+      if (doc) window.open(doc.dataUrl, '_blank', 'noopener');
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.doc-card-delete-btn');
+    if (deleteBtn) {
+      if (!confirm('이 문서를 삭제할까요?')) return;
+      deleteDocument(deleteBtn.dataset.id);
+      renderDocumentsScreen();
+    }
+  });
+}
+
+let documentUploadState = null;
+
+function openDocumentUploadSheet() {
+  documentUploadState = { file: null, status: null, message: '', fileName: '', category: 'other', mimeType: '', dataUrl: '', autoClassified: false };
+  renderDocumentUploadSheetBody(documentUploadState);
+  document.getElementById('document-upload-sheet').style.display = 'flex';
+}
+
+function closeDocumentUploadSheet() {
+  document.getElementById('document-upload-sheet').style.display = 'none';
+  documentUploadState = null;
+  renderDocumentsScreen();
+}
+
+function bindDocumentUploadSheet() {
+  const overlay = document.getElementById('document-upload-sheet');
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'document-upload-close') {
+      closeDocumentUploadSheet();
+      return;
+    }
+
+    const categoryChip = e.target.closest('.document-category-chip');
+    if (categoryChip && documentUploadState) {
+      documentUploadState.category = categoryChip.dataset.id;
+      documentUploadState.autoClassified = false;
+      renderDocumentUploadSheetBody(documentUploadState);
+      return;
+    }
+
+    if (e.target.id === 'btn-save-document') {
+      const fileName = document.getElementById('input-document-name').value.trim();
+      if (!fileName) {
+        alert('파일명을 입력해주세요.');
+        return;
+      }
+      addDocument({
+        fileName,
+        mimeType: documentUploadState.mimeType,
+        dataUrl: documentUploadState.dataUrl,
+        category: documentUploadState.category,
+        uploadedBy: getUserName(),
+        createdAt: Date.now()
+      });
+      closeDocumentUploadSheet();
+    }
+  });
+
+  overlay.addEventListener('change', async (e) => {
+    if (e.target.id !== 'input-document-file') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    documentUploadState.file = file;
+    documentUploadState.status = 'processing';
+    documentUploadState.message = '문서 처리 중...';
+    renderDocumentUploadSheetBody(documentUploadState);
+    try {
+      const processed = await processDocumentFile(file, (msg) => {
+        documentUploadState.message = msg;
+        renderDocumentUploadSheetBody(documentUploadState);
+      });
+      documentUploadState.status = 'ready';
+      documentUploadState.fileName = processed.fileName;
+      documentUploadState.mimeType = processed.mimeType;
+      documentUploadState.dataUrl = processed.dataUrl;
+      documentUploadState.category = processed.category;
+      documentUploadState.autoClassified = true;
+    } catch (err) {
+      alert(err.message === 'FILE_TOO_LARGE' ? '파일이 너무 커요. 더 작은 파일로 다시 시도해주세요.' : '문서를 처리하지 못했습니다. 다시 시도해주세요.');
+      documentUploadState.file = null;
+      documentUploadState.status = null;
+    }
+    renderDocumentUploadSheetBody(documentUploadState);
   });
 }
 
@@ -655,11 +864,13 @@ bindDashboardCategoryFilter();
 bindBackupButtons();
 bindResetButton();
 bindDateRangeSheet();
-bindMealPlanScreen();
-bindMealAddSheet();
+bindScheduleScreen();
+bindScheduleAddSheet();
 bindPackingScreen();
 bindPackingAddSheet();
 bindParticipantSheet();
+bindDocumentsScreen();
+bindDocumentUploadSheet();
 
 function showUsernamePrompt(onDone) {
   const overlay = document.getElementById('username-sheet');
@@ -692,8 +903,9 @@ function boot() {
       () => {
         renderDashboardScreen();
         renderExpenseListScreen();
-        renderMealPlanScreen();
+        renderScheduleScreen();
         renderPackingScreen();
+        renderDocumentsScreen();
       }
     );
     return;
