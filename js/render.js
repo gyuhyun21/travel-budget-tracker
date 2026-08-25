@@ -172,7 +172,7 @@ function renderEventsScreen() {
 
   container.innerHTML = `
     <div class="ios-header">
-      <h1 class="ios-large-title">모임</h1>
+      <h1 class="ios-large-title">모임비용정리 1/n</h1>
       <button type="button" class="ios-header-action" id="btn-create-event" aria-label="새 모임">${ICON_PLUS}</button>
     </div>
     ${enriched.length ? `
@@ -334,15 +334,18 @@ function spenderSummaryHtml(expenses, participants) {
     totals[key] = (totals[key] || 0) + (e.krwAmount || 0);
   }
   const people = [
-    ...participants.map(name => ({ name, amount: totals[name] || 0, known: true })),
-    ...(totals[SPENDER_UNKNOWN_LABEL] ? [{ name: SPENDER_UNKNOWN_LABEL, amount: totals[SPENDER_UNKNOWN_LABEL], known: false }] : []),
+    ...participants.map(p => ({ name: p.name, count: p.count, amount: totals[p.name] || 0, known: true })),
+    ...(totals[SPENDER_UNKNOWN_LABEL] ? [{ name: SPENDER_UNKNOWN_LABEL, count: null, amount: totals[SPENDER_UNKNOWN_LABEL], known: false }] : []),
   ];
   if (!people.length) return '';
   return `
     <div class="spender-summary-row">
       ${people.map(p => `
         <div class="spender-summary-tile ${p.known ? '' : 'spender-summary-unknown'}">
-          <span class="spender-summary-name">${escapeHtml(p.name)}</span>
+          <div class="spender-summary-header">
+            <span class="spender-summary-name">${escapeHtml(p.name)}</span>
+            ${p.count ? `<span class="spender-summary-count">${p.count}인</span>` : ''}
+          </div>
           <span class="spender-summary-amount">${Math.round(p.amount).toLocaleString()}원</span>
         </div>
       `).join('')}
@@ -453,7 +456,7 @@ function renderExpenseListScreen() {
     ${expenseListView === 'settlement'
       ? settlementSectionHtml(expenses, participants)
       : `
-        ${expenses.length ? spenderSummaryHtml(expenses, participants.map(p => p.name)) : ''}
+        ${expenses.length ? spenderSummaryHtml(expenses, participants) : ''}
         ${expenses.length
           ? `<div class="card-section">${expenses.map(e => expenseCardHtml(e)).join('')}</div>`
           : `<div class="empty-state">
@@ -492,15 +495,25 @@ function settlementSectionHtml(expenses, participants) {
       <div class="settlement-summary-detail">총 ${result.totalUnits}인 (${breakdown}) · 1인당 ${result.perUnit.toLocaleString()}원</div>
     </div>
 
-    <h3 class="section-title">각자 부담액</h3>
+    <h3 class="section-title">참가자별 정산</h3>
     <div class="card-section">
       ${result.balances.map(b => `
         <div class="settlement-balance-row">
-          <div class="settlement-balance-main">
+          <div class="settlement-balance-header">
             <span class="settlement-balance-name">${escapeHtml(b.name)}</span>
-            <span class="settlement-balance-amount ${b.balance >= 0 ? 'positive' : 'negative'}">${b.balance >= 0 ? '+' : ''}${Math.round(b.balance).toLocaleString()}원</span>
+            <span class="settlement-family-badge">${b.count}인 가족</span>
+            <span class="settlement-balance-net ${b.balance >= 0 ? 'positive' : 'negative'}">${b.balance >= 0 ? '+' : ''}${Math.round(b.balance).toLocaleString()}원</span>
           </div>
-          <div class="settlement-balance-detail">낸 돈 ${Math.round(b.paid).toLocaleString()}원 · 부담액 ${Math.round(b.share).toLocaleString()}원 (1인당 ${result.perUnit.toLocaleString()}원 × ${b.count}명)</div>
+          <div class="settlement-balance-stats">
+            <div class="settlement-stat">
+              <span class="settlement-stat-label">지출</span>
+              <span class="settlement-stat-value">${Math.round(b.paid).toLocaleString()}원</span>
+            </div>
+            <div class="settlement-stat">
+              <span class="settlement-stat-label">n빵금액</span>
+              <span class="settlement-stat-value">${Math.round(b.share).toLocaleString()}원</span>
+            </div>
+          </div>
         </div>
       `).join('')}
     </div>

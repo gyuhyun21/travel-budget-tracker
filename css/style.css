@@ -783,21 +783,45 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   border-bottom: 0.5px solid var(--color-separator);
 }
 .card-section .settlement-balance-row:last-child { border-bottom: none; }
-.settlement-balance-main {
+.settlement-balance-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
-.settlement-balance-name { font-size: 15px; font-weight: 590; color: var(--color-ink); }
-.settlement-balance-amount {
-  font-size: 15px;
+.settlement-balance-name { font-size: 15px; font-weight: 700; color: var(--color-ink); }
+.settlement-family-badge {
+  flex-shrink: 0;
+  font-size: 11px;
   font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.settlement-balance-net {
+  margin-left: auto;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.settlement-balance-net.positive { color: var(--color-success); }
+.settlement-balance-net.negative { color: var(--color-danger); }
+.settlement-balance-stats {
+  display: flex;
+  gap: 18px;
+  margin-top: 9px;
+}
+.settlement-stat { flex: 1; min-width: 0; }
+.settlement-stat-label { display: block; font-size: 11.5px; color: var(--color-ink-soft); margin-bottom: 2px; }
+.settlement-stat-value {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 590;
+  color: var(--color-ink);
   font-variant-numeric: tabular-nums;
 }
-.settlement-balance-amount.positive { color: var(--color-success); }
-.settlement-balance-amount.negative { color: var(--color-danger); }
-.settlement-balance-detail { font-size: 12px; color: var(--color-ink-soft); margin-top: 3px; }
 
 .settlement-transfer-row {
   display: flex;
@@ -838,15 +862,30 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
 .spender-summary-tile.spender-summary-unknown {
   background: linear-gradient(135deg, #FF7AD1, #FF1E93);
 }
+.spender-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
 .spender-summary-name {
-  display: block;
   font-size: 12px;
   font-weight: 590;
   color: rgba(28, 28, 30, 0.65);
-  margin-bottom: 4px;
   white-space: nowrap;
 }
 .spender-summary-tile.spender-summary-unknown .spender-summary-name { color: rgba(255, 255, 255, 0.85); }
+.spender-summary-count {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(28, 28, 30, 0.6);
+  background: rgba(28, 28, 30, 0.12);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.spender-summary-tile.spender-summary-unknown .spender-summary-count { color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.25); }
 .spender-summary-amount {
   display: block;
   font-size: 17px;
