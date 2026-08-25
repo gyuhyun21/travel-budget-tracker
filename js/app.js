@@ -4,13 +4,93 @@ function showScreen(name) {
   document.getElementById(`screen-${name}`).classList.add('active');
   const navBtn = document.querySelector(`.nav-btn[data-screen="${name}"]`);
   if (navBtn) navBtn.classList.add('active');
+  document.querySelector('.nav-bar').style.display = name === 'events' ? 'none' : 'flex';
+  if (name === 'events') renderEventsScreen();
   if (name === 'settings') renderSettingsScreen();
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
   if (name === 'expense-list') renderExpenseListScreen();
-  if (name === 'schedule') renderScheduleScreen();
   if (name === 'packing') renderPackingScreen();
-  if (name === 'documents') renderDocumentsScreen();
+}
+
+function openEventById(id) {
+  const shared = enterEvent(id);
+  if (shared) {
+    document.getElementById('sync-loading').style.display = 'flex';
+    startSharedSync(
+      () => {
+        document.getElementById('sync-loading').style.display = 'none';
+        showScreen('dashboard');
+      },
+      () => {
+        renderDashboardScreen();
+        renderExpenseListScreen();
+        renderPackingScreen();
+      }
+    );
+    return;
+  }
+  showScreen('dashboard');
+}
+
+function bindEventsScreen() {
+  document.getElementById('screen-events').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-create-event')) {
+      openEventCreateSheet();
+      return;
+    }
+
+    const filterTab = e.target.closest('.event-filter-tab');
+    if (filterTab) {
+      eventsFilter = filterTab.dataset.value;
+      renderEventsScreen();
+      return;
+    }
+
+    const card = e.target.closest('.event-card');
+    if (card) {
+      openEventById(card.dataset.id);
+    }
+  });
+}
+
+function openEventCreateSheet() {
+  renderEventCreateSheetBody();
+  document.getElementById('event-create-sheet').style.display = 'flex';
+  document.getElementById('input-new-event-title').focus();
+}
+
+function closeEventCreateSheet() {
+  document.getElementById('event-create-sheet').style.display = 'none';
+}
+
+function bindEventCreateSheet() {
+  const overlay = document.getElementById('event-create-sheet');
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'event-create-close') {
+      closeEventCreateSheet();
+      return;
+    }
+    if (e.target.id === 'btn-confirm-create-event') {
+      const input = document.getElementById('input-new-event-title');
+      const title = input.value.trim();
+      if (!title) { input.focus(); return; }
+      createEvent(title);
+      closeEventCreateSheet();
+      showScreen('dashboard');
+    }
+  });
+}
+
+// Lets the user bail out of the "불러오는 중" overlay if window.firebaseReady
+// never resolves (network down, Firebase SDK blocked) — otherwise the
+// overlay hides the nav bar and there's no way back to the events list.
+function bindSyncLoadingCancel() {
+  document.getElementById('btn-cancel-sync-loading').addEventListener('click', () => {
+    leaveEvent();
+    document.getElementById('sync-loading').style.display = 'none';
+    showScreen('events');
+  });
 }
 
 function bindSettingsForm() {
@@ -25,28 +105,30 @@ function bindSettingsForm() {
       renderSettingsScreen();
       return;
     }
-    if (e.target.id !== 'settings-form') return;
-    e.preventDefault();
-    const tripStartDate = document.getElementById('input-trip-start').value;
-    const tripEndDate = document.getElementById('input-trip-end').value;
-    const message = document.getElementById('settings-message');
-    if (!tripStartDate || !tripEndDate) {
-      message.textContent = '여행 기간을 선택해주세요.';
-      message.classList.add('banner-error');
-      message.style.display = 'block';
+    if (e.target.id === 'settings-form') {
+      e.preventDefault();
+      const tripStartDate = document.getElementById('input-trip-start').value;
+      const tripEndDate = document.getElementById('input-trip-end').value;
+      const settings = {
+        ...(getSettings() || {}),
+        tripName: document.getElementById('input-trip-name').value.trim(),
+        tripStartDate: tripStartDate || undefined,
+        tripEndDate: tripEndDate || undefined
+      };
+      saveSettings(settings);
+      showScreen('dashboard');
       return;
     }
-    const settings = {
-      ...(getSettings() || {}),
-      tripName: document.getElementById('input-trip-name').value.trim(),
-      totalBudget: parseMoneyInput(document.getElementById('input-total-budget').value),
-      thbRate: parseMoneyInput(document.getElementById('input-thb-rate').value),
-      usdRate: parseMoneyInput(document.getElementById('input-usd-rate').value),
-      tripStartDate,
-      tripEndDate
-    };
-    saveSettings(settings);
-    showScreen('dashboard');
+    if (e.target.id === 'currency-rate-form') {
+      e.preventDefault();
+      const settings = { ...(getSettings() || {}) };
+      document.querySelectorAll('.currency-rate-input').forEach(input => {
+        const field = input.dataset.currency === 'THB' ? 'thbRate' : 'usdRate';
+        settings[field] = parseMoneyInput(input.value);
+      });
+      saveSettings(settings);
+      renderSettingsScreen();
+    }
   });
 
   container.addEventListener('input', (e) => {
@@ -99,6 +181,27 @@ function bindSettingsForm() {
       if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
       disableSharing();
       renderSettingsScreen();
+    }
+
+    const addCurrencyChip = e.target.closest('.currency-add-chip');
+    if (addCurrencyChip) {
+      const settings = getSettings() || {};
+      const currency = addCurrencyChip.dataset.currency;
+      const field = currency === 'THB' ? 'thbRate' : 'usdRate';
+      const defaultRate = currency === 'THB' ? DEFAULT_THB_RATE : DEFAULT_USD_RATE;
+      saveSettings({ ...settings, [field]: defaultRate });
+      renderSettingsScreen();
+      return;
+    }
+
+    const removeCurrencyBtn = e.target.closest('.currency-remove-btn');
+    if (removeCurrencyBtn) {
+      const settings = { ...(getSettings() || {}) };
+      const field = removeCurrencyBtn.dataset.currency === 'THB' ? 'thbRate' : 'usdRate';
+      delete settings[field];
+      saveSettings(settings);
+      renderSettingsScreen();
+      return;
     }
   });
 }
@@ -258,46 +361,10 @@ function bindExpenseForm() {
       setActiveSpenderChip(isActive ? '' : spenderBtn.dataset.value);
       return;
     }
-
-    if (e.target.id === 'btn-scan-receipt') {
-      document.getElementById('input-receipt-photo').click();
-    }
   });
 
   container.addEventListener('input', (e) => {
     if (e.target.classList.contains('input-money')) formatMoneyInput(e.target);
-  });
-
-  container.addEventListener('change', async (e) => {
-    if (e.target.id !== 'input-receipt-photo') return;
-    const file = e.target.files[0];
-    if (!file) return;
-    const statusEl = document.getElementById('ocr-status');
-    statusEl.style.display = 'block';
-    statusEl.textContent = '영수증 인식 준비 중...';
-    try {
-      const text = await recognizeReceiptImage(file, (pct) => {
-        statusEl.textContent = `영수증 인식 중... ${pct}%`;
-      });
-      const guessedAmount = guessAmountFromText(text);
-      const guessedMemo = guessMemoFromText(text);
-      const guessedCategory = guessCategoryFromText(text);
-
-      if (guessedAmount !== null) {
-        const amountEl = document.getElementById('input-expense-amount');
-        amountEl.value = guessedAmount;
-        formatMoneyInput(amountEl);
-      }
-      if (guessedMemo) {
-        document.getElementById('input-expense-memo').value = guessedMemo;
-      }
-      setActiveCategory(guessedCategory);
-      statusEl.textContent = '인식 완료! 내용을 확인하고 저장해주세요.';
-    } catch (err) {
-      statusEl.textContent = '영수증 인식에 실패했습니다. 직접 입력해주세요.';
-    } finally {
-      e.target.value = '';
-    }
   });
 }
 
@@ -313,8 +380,13 @@ function bindAddExpenseButtons() {
   });
 }
 
-function bindDashboardCategoryFilter() {
+function bindDashboardScreen() {
   document.getElementById('screen-dashboard').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-back-to-events')) {
+      leaveEvent();
+      showScreen('events');
+      return;
+    }
     const tab = e.target.closest('.filter-tab');
     if (!tab) return;
     dashboardCategoryFilter = tab.dataset.value;
@@ -324,6 +396,13 @@ function bindDashboardCategoryFilter() {
 
 function bindExpenseList() {
   document.getElementById('screen-expense-list').addEventListener('click', (e) => {
+    const viewBtn = e.target.closest('.expense-list-view-btn');
+    if (viewBtn) {
+      expenseListView = viewBtn.dataset.value;
+      renderExpenseListScreen();
+      return;
+    }
+
     const btn = e.target.closest('.expense-item');
     if (!btn) return;
     showScreen('add-expense');
@@ -336,7 +415,7 @@ function bindBackupButtons() {
 
   container.addEventListener('click', (e) => {
     if (e.target.id !== 'btn-export') return;
-    const data = { settings: getSettings(), expenses: getExpenses(), scheduleItems: getScheduleItems(), packingItems: getPackingItems(), documents: getDocuments() };
+    const data = { settings: getSettings(), expenses: getExpenses(), packingItems: getPackingItems() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -362,14 +441,10 @@ function bindBackupButtons() {
         if (!confirm('기존 데이터를 덮어씁니다. 계속할까요?')) return;
         saveSettings(data.settings);
         saveExpenses(data.expenses);
-        saveScheduleItems(Array.isArray(data.scheduleItems) ? data.scheduleItems : []);
         savePackingItems(Array.isArray(data.packingItems) ? data.packingItems : []);
-        saveDocuments(Array.isArray(data.documents) ? data.documents : []);
         renderSettingsScreen();
         renderDashboardScreen();
-        renderScheduleScreen();
         renderPackingScreen();
-        renderDocumentsScreen();
         const restored = document.getElementById('settings-message');
         restored.textContent = '복원되었습니다.';
         restored.style.display = 'block';
@@ -387,335 +462,21 @@ function bindBackupButtons() {
   });
 }
 
-function bindResetButton() {
+function bindEventStatusButtons() {
   document.getElementById('screen-settings').addEventListener('click', (e) => {
-    if (e.target.id !== 'btn-reset-data') return;
-    if (!confirm('예산과 지출 기록을 모두 삭제하고 처음부터 다시 시작합니다. 계속할까요?')) return;
-    resetAllData();
-    showScreen('settings');
-  });
-}
-
-function bindScheduleScreen() {
-  document.getElementById('screen-schedule').addEventListener('click', (e) => {
-    const dayTab = e.target.closest('.schedule-day-tab');
-    if (dayTab) {
-      scheduleSelectedDate = dayTab.dataset.date;
-      renderScheduleScreen();
+    if (e.target.id === 'btn-toggle-event-status') {
+      const id = getActiveEventId();
+      const meta = getEvents().find(ev => ev.id === id);
+      const nextStatus = meta?.status === 'completed' ? 'active' : 'completed';
+      updateEventMeta(id, { status: nextStatus });
+      renderSettingsScreen();
       return;
     }
-
-    const addRow = e.target.closest('.schedule-add-row');
-    if (addRow) {
-      openScheduleAddSheet(addRow.dataset.date, Number(addRow.dataset.hour));
-      return;
+    if (e.target.id === 'btn-delete-event') {
+      if (!confirm('이 모임의 모든 기록을 완전히 삭제합니다. 되돌릴 수 없어요. 계속할까요?')) return;
+      deleteEvent(getActiveEventId());
+      showScreen('events');
     }
-
-    const mapBtn = e.target.closest('.schedule-map-btn');
-    if (mapBtn) {
-      window.open(mapBtn.dataset.url, '_blank', 'noopener');
-      return;
-    }
-
-    const editBtn = e.target.closest('.schedule-edit-btn');
-    if (editBtn) {
-      const item = getScheduleItems().find(i => i.id === editBtn.dataset.id);
-      if (item) openScheduleAddSheet(item.date, item.hour, item.id);
-    }
-  });
-}
-
-let scheduleAddState = null;
-let scheduleSearchDebounceTimer = null;
-
-function openScheduleAddSheet(date, hour, existingId = null) {
-  const existing = existingId ? getScheduleItems().find(i => i.id === existingId) : null;
-  scheduleAddState = existing
-    ? {
-        id: existing.id, date, hour,
-        name: existing.name, memo: existing.memo,
-        selectedPlace: existing.address ? { name: existing.name, address: existing.address, lat: existing.lat, lng: existing.lng, placeUrl: existing.placeUrl } : null,
-        searchResults: null,
-        documentIds: [...(existing.documentIds || [])],
-        inlineUpload: null
-      }
-    : { id: null, date, hour, name: '', memo: '', selectedPlace: null, searchResults: null, documentIds: [], inlineUpload: null };
-  renderScheduleAddSheetBody(scheduleAddState);
-  document.getElementById('schedule-add-sheet').style.display = 'flex';
-}
-
-function closeScheduleAddSheet() {
-  document.getElementById('schedule-add-sheet').style.display = 'none';
-  scheduleAddState = null;
-}
-
-// Shared by the 문서함 upload sheet and the inline "새 문서 업로드" flow inside
-// the schedule sheet: compresses/reads the file, runs OCR-based category
-// guessing for images (skipped for PDFs, which Tesseract can't read), and
-// rejects files that would still be too large for a Firestore document.
-async function processDocumentFile(file, onProgress) {
-  const isImage = file.type.startsWith('image/');
-  let dataUrl;
-  let category = 'other';
-  if (isImage) {
-    onProgress?.('이미지 압축 중...');
-    dataUrl = await compressImageToDataUrl(file);
-    try {
-      onProgress?.('문서 내용 인식 중...');
-      const text = await recognizeReceiptImage(file, (pct) => onProgress?.(`문서 내용 인식 중... ${pct}%`));
-      category = guessDocumentCategoryFromText(text);
-    } catch (err) {
-      category = 'other';
-    }
-  } else {
-    onProgress?.('파일 읽는 중...');
-    dataUrl = await fileToDataUrl(file);
-  }
-  if (dataUrl.length > 900 * 1024) {
-    throw new Error('FILE_TOO_LARGE');
-  }
-  return { fileName: file.name, mimeType: file.type, dataUrl, category };
-}
-
-function bindScheduleAddSheet() {
-  const overlay = document.getElementById('schedule-add-sheet');
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target.id === 'schedule-add-close') {
-      closeScheduleAddSheet();
-      return;
-    }
-
-    const resultBtn = e.target.closest('.schedule-search-result');
-    if (resultBtn && scheduleAddState) {
-      scheduleAddState.selectedPlace = scheduleAddState.searchResults[Number(resultBtn.dataset.index)];
-      renderScheduleAddSheetBody(scheduleAddState);
-      return;
-    }
-
-    const docChip = e.target.closest('.schedule-doc-chip');
-    if (docChip && scheduleAddState) {
-      const id = docChip.dataset.id;
-      const idx = scheduleAddState.documentIds.indexOf(id);
-      if (idx === -1) scheduleAddState.documentIds.push(id);
-      else scheduleAddState.documentIds.splice(idx, 1);
-      renderScheduleAddSheetBody(scheduleAddState);
-      return;
-    }
-
-    if (e.target.id === 'btn-schedule-upload-doc') {
-      document.getElementById('input-schedule-doc-file').click();
-      return;
-    }
-
-    const inlineCategoryChip = e.target.closest('.doc-inline-category-chip');
-    if (inlineCategoryChip && scheduleAddState?.inlineUpload) {
-      scheduleAddState.inlineUpload.category = inlineCategoryChip.dataset.id;
-      renderScheduleAddSheetBody(scheduleAddState);
-      return;
-    }
-
-    if (e.target.id === 'btn-confirm-inline-doc' && scheduleAddState?.inlineUpload) {
-      const u = scheduleAddState.inlineUpload;
-      const newDoc = addDocument({
-        fileName: u.fileName,
-        mimeType: u.mimeType,
-        dataUrl: u.dataUrl,
-        category: u.category,
-        uploadedBy: getUserName(),
-        createdAt: Date.now()
-      });
-      scheduleAddState.documentIds.push(newDoc.id);
-      scheduleAddState.inlineUpload = null;
-      renderScheduleAddSheetBody(scheduleAddState);
-      return;
-    }
-
-    if (e.target.id === 'btn-save-schedule') {
-      const name = document.getElementById('input-schedule-name').value.trim();
-      if (!name) {
-        alert('이름을 입력해주세요.');
-        return;
-      }
-      const memo = document.getElementById('input-schedule-memo').value.trim();
-      const place = scheduleAddState.selectedPlace;
-      const fields = {
-        date: scheduleAddState.date,
-        hour: scheduleAddState.hour,
-        name,
-        memo,
-        address: place?.address || '',
-        placeUrl: place?.placeUrl || '',
-        lat: place?.lat ?? null,
-        lng: place?.lng ?? null,
-        documentIds: scheduleAddState.documentIds
-      };
-      if (scheduleAddState.id) {
-        updateScheduleItem(scheduleAddState.id, fields);
-      } else {
-        addScheduleItem({ ...fields, createdBy: getUserName() });
-      }
-      closeScheduleAddSheet();
-      renderScheduleScreen();
-      return;
-    }
-
-    if (e.target.id === 'btn-delete-schedule') {
-      if (!confirm('이 일정을 삭제할까요?')) return;
-      deleteScheduleItem(scheduleAddState.id);
-      closeScheduleAddSheet();
-      renderScheduleScreen();
-    }
-  });
-
-  overlay.addEventListener('input', (e) => {
-    if (e.target.id !== 'input-schedule-search') return;
-    const keyword = e.target.value.trim();
-    clearTimeout(scheduleSearchDebounceTimer);
-    const resultsEl = document.getElementById('schedule-search-results');
-    if (!keyword) {
-      scheduleAddState.searchResults = null;
-      resultsEl.innerHTML = '';
-      return;
-    }
-    scheduleSearchDebounceTimer = setTimeout(async () => {
-      try {
-        const results = await searchGooglePlaces(keyword);
-        scheduleAddState.searchResults = results;
-        resultsEl.innerHTML = scheduleSearchResultsHtml(results);
-      } catch (err) {
-        resultsEl.innerHTML = '<p class="field-hint" style="margin:6px 0 0">검색을 사용할 수 없어요. 이름을 직접 입력해주세요.</p>';
-      }
-    }, 400);
-  });
-
-  overlay.addEventListener('change', async (e) => {
-    if (e.target.id !== 'input-schedule-doc-file') return;
-    const file = e.target.files[0];
-    if (!file) return;
-    scheduleAddState.inlineUpload = { status: 'processing', message: '문서 처리 중...' };
-    renderScheduleAddSheetBody(scheduleAddState);
-    try {
-      const processed = await processDocumentFile(file, (msg) => {
-        if (scheduleAddState.inlineUpload) {
-          scheduleAddState.inlineUpload.message = msg;
-        }
-      });
-      scheduleAddState.inlineUpload = { status: 'ready', ...processed };
-    } catch (err) {
-      alert(err.message === 'FILE_TOO_LARGE' ? '파일이 너무 커요. 더 작은 파일로 다시 시도해주세요.' : '문서를 처리하지 못했습니다. 다시 시도해주세요.');
-      scheduleAddState.inlineUpload = null;
-    } finally {
-      e.target.value = '';
-      renderScheduleAddSheetBody(scheduleAddState);
-    }
-  });
-}
-
-function bindDocumentsScreen() {
-  document.getElementById('screen-documents').addEventListener('click', (e) => {
-    if (e.target.closest('#btn-add-document')) {
-      openDocumentUploadSheet();
-      return;
-    }
-
-    const tab = e.target.closest('.document-category-tab');
-    if (tab) {
-      documentCategoryFilter = tab.dataset.id;
-      renderDocumentsScreen();
-      return;
-    }
-
-    const openBtn = e.target.closest('.doc-card-open-btn');
-    if (openBtn) {
-      const doc = getDocumentById(openBtn.dataset.id);
-      if (doc) window.open(doc.dataUrl, '_blank', 'noopener');
-      return;
-    }
-
-    const deleteBtn = e.target.closest('.doc-card-delete-btn');
-    if (deleteBtn) {
-      if (!confirm('이 문서를 삭제할까요?')) return;
-      deleteDocument(deleteBtn.dataset.id);
-      renderDocumentsScreen();
-    }
-  });
-}
-
-let documentUploadState = null;
-
-function openDocumentUploadSheet() {
-  documentUploadState = { file: null, status: null, message: '', fileName: '', category: 'other', mimeType: '', dataUrl: '', autoClassified: false };
-  renderDocumentUploadSheetBody(documentUploadState);
-  document.getElementById('document-upload-sheet').style.display = 'flex';
-}
-
-function closeDocumentUploadSheet() {
-  document.getElementById('document-upload-sheet').style.display = 'none';
-  documentUploadState = null;
-  renderDocumentsScreen();
-}
-
-function bindDocumentUploadSheet() {
-  const overlay = document.getElementById('document-upload-sheet');
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target.id === 'document-upload-close') {
-      closeDocumentUploadSheet();
-      return;
-    }
-
-    const categoryChip = e.target.closest('.document-category-chip');
-    if (categoryChip && documentUploadState) {
-      documentUploadState.category = categoryChip.dataset.id;
-      documentUploadState.autoClassified = false;
-      renderDocumentUploadSheetBody(documentUploadState);
-      return;
-    }
-
-    if (e.target.id === 'btn-save-document') {
-      const fileName = document.getElementById('input-document-name').value.trim();
-      if (!fileName) {
-        alert('파일명을 입력해주세요.');
-        return;
-      }
-      addDocument({
-        fileName,
-        mimeType: documentUploadState.mimeType,
-        dataUrl: documentUploadState.dataUrl,
-        category: documentUploadState.category,
-        uploadedBy: getUserName(),
-        createdAt: Date.now()
-      });
-      closeDocumentUploadSheet();
-    }
-  });
-
-  overlay.addEventListener('change', async (e) => {
-    if (e.target.id !== 'input-document-file') return;
-    const file = e.target.files[0];
-    if (!file) return;
-    documentUploadState.file = file;
-    documentUploadState.status = 'processing';
-    documentUploadState.message = '문서 처리 중...';
-    renderDocumentUploadSheetBody(documentUploadState);
-    try {
-      const processed = await processDocumentFile(file, (msg) => {
-        documentUploadState.message = msg;
-        renderDocumentUploadSheetBody(documentUploadState);
-      });
-      documentUploadState.status = 'ready';
-      documentUploadState.fileName = processed.fileName;
-      documentUploadState.mimeType = processed.mimeType;
-      documentUploadState.dataUrl = processed.dataUrl;
-      documentUploadState.category = processed.category;
-      documentUploadState.autoClassified = true;
-    } catch (err) {
-      alert(err.message === 'FILE_TOO_LARGE' ? '파일이 너무 커요. 더 작은 파일로 다시 시도해주세요.' : '문서를 처리하지 못했습니다. 다시 시도해주세요.');
-      documentUploadState.file = null;
-      documentUploadState.status = null;
-    }
-    renderDocumentUploadSheetBody(documentUploadState);
   });
 }
 
@@ -830,47 +591,59 @@ function bindParticipantSheet() {
     const removeBtn = e.target.closest('.participant-remove-btn');
     if (removeBtn) {
       const settings = getSettings();
-      const participants = [...(settings.packingParticipants || [])];
+      const participants = getParticipants();
       const [removed] = participants.splice(Number(removeBtn.dataset.index), 1);
       saveSettings({ ...settings, packingParticipants: participants });
       // reassign that person's items to unassigned so nothing silently vanishes
-      getPackingItems().filter(i => i.assignee === removed).forEach(i => updatePackingItem(i.id, { assignee: null }));
+      getPackingItems().filter(i => i.assignee === removed.name).forEach(i => updatePackingItem(i.id, { assignee: null }));
       renderParticipantSheetBody();
       return;
     }
 
     if (e.target.id === 'btn-add-participant') {
-      const input = document.getElementById('input-new-participant');
-      const name = input.value.trim();
+      const nameInput = document.getElementById('input-new-participant');
+      const countInput = document.getElementById('input-new-participant-count');
+      const name = nameInput.value.trim();
       if (!name) return;
       const settings = getSettings();
-      const participants = [...(settings.packingParticipants || [])];
-      if (participants.includes(name)) {
-        input.value = '';
+      const participants = getParticipants();
+      if (participants.some(p => p.name === name)) {
+        nameInput.value = '';
         return;
       }
-      participants.push(name);
+      const count = Math.max(1, parseInt(countInput.value, 10) || 1);
+      participants.push({ name, count });
       saveSettings({ ...settings, packingParticipants: participants });
       renderParticipantSheetBody();
     }
   });
+
+  overlay.addEventListener('change', (e) => {
+    const countInput = e.target.closest('.participant-count-input');
+    if (!countInput) return;
+    const settings = getSettings();
+    const participants = getParticipants();
+    const index = Number(countInput.dataset.index);
+    participants[index] = { ...participants[index], count: Math.max(1, parseInt(countInput.value, 10) || 1) };
+    saveSettings({ ...settings, packingParticipants: participants });
+    renderParticipantSheetBody();
+  });
 }
 
+bindEventsScreen();
+bindEventCreateSheet();
+bindSyncLoadingCancel();
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
 bindAddExpenseButtons();
-bindDashboardCategoryFilter();
+bindDashboardScreen();
 bindBackupButtons();
-bindResetButton();
+bindEventStatusButtons();
 bindDateRangeSheet();
-bindScheduleScreen();
-bindScheduleAddSheet();
 bindPackingScreen();
 bindPackingAddSheet();
 bindParticipantSheet();
-bindDocumentsScreen();
-bindDocumentUploadSheet();
 
 function showUsernamePrompt(onDone) {
   const overlay = document.getElementById('username-sheet');
@@ -898,19 +671,17 @@ function boot() {
     startSharedSync(
       () => {
         document.getElementById('sync-loading').style.display = 'none';
-        showScreen(getSettings() ? 'dashboard' : 'settings');
+        showScreen('dashboard');
       },
       () => {
         renderDashboardScreen();
         renderExpenseListScreen();
-        renderScheduleScreen();
         renderPackingScreen();
-        renderDocumentsScreen();
       }
     );
     return;
   }
-  showScreen(getSettings() ? 'dashboard' : 'settings');
+  showScreen('events');
 }
 
 if (!getUserName()) {
