@@ -140,6 +140,7 @@ let sharedTripId = null;
 let cachedSettings = null;
 let cachedExpenses = [];
 let cachedPackingItems = [];
+let initialSyncDone = false;
 
 function isSharedMode() {
   return !!sharedTripId;
@@ -267,6 +268,7 @@ function getSettings() {
 
 function saveSettings(settings) {
   const id = getActiveEventId();
+  if (!id) throw new Error('saveSettings called with no active event');
   if (isSharedMode()) {
     cachedSettings = settings;
     fsSaveSettings(sharedTripId, settings);
@@ -284,7 +286,9 @@ function getExpenses() {
 }
 
 function saveExpenses(expenses) {
-  localStorage.setItem(eventKey(getActiveEventId(), 'expenses'), JSON.stringify(expenses));
+  const id = getActiveEventId();
+  if (!id) throw new Error('saveExpenses called with no active event');
+  localStorage.setItem(eventKey(id, 'expenses'), JSON.stringify(expenses));
 }
 
 function generateId() {
@@ -350,7 +354,9 @@ function getPackingItems() {
 }
 
 function savePackingItems(items) {
-  localStorage.setItem(eventKey(getActiveEventId(), 'packing'), JSON.stringify(items));
+  const id = getActiveEventId();
+  if (!id) throw new Error('savePackingItems called with no active event');
+  localStorage.setItem(eventKey(id, 'packing'), JSON.stringify(items));
 }
 
 function addPackingItem(item) {
