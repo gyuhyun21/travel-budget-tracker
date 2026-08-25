@@ -77,7 +77,9 @@ function bindEventCreateSheet() {
       if (!title) { input.focus(); return; }
       createEvent(title);
       closeEventCreateSheet();
-      showScreen('dashboard');
+      // New event, nobody added yet — walk straight into participant entry
+      // before landing on the dashboard, so N빵 has someone to split with.
+      openParticipantSheet('create');
     }
   });
 }
@@ -312,8 +314,9 @@ function bindExpenseForm() {
     const currency = document.getElementById('input-expense-currency').value;
     const amount = parseMoneyInput(document.getElementById('input-expense-amount').value);
     const category = document.getElementById('input-expense-category').value;
-    const memo = document.getElementById('input-expense-memo').value;
-    const spender = document.getElementById('input-expense-spender').value || SPENDER_UNKNOWN_LABEL;
+    const memo = document.getElementById('input-expense-memo').value.trim();
+    const spender = document.getElementById('input-expense-spender').value;
+    const hasParticipants = getParticipants().length > 0;
     const krwAmount = toKRW(amount, currency, settings);
     const messageEl = document.getElementById('expense-form-message');
     if (krwAmount === null) {
@@ -321,7 +324,22 @@ function bindExpenseForm() {
       messageEl.style.display = 'block';
       return;
     }
-    const expenseData = { date, currency, amount, krwAmount, category, memo, spender };
+    if (!category) {
+      messageEl.textContent = '카테고리를 선택해주세요.';
+      messageEl.style.display = 'block';
+      return;
+    }
+    if (hasParticipants && !spender) {
+      messageEl.textContent = '지출한 사람을 선택해주세요.';
+      messageEl.style.display = 'block';
+      return;
+    }
+    if (!memo) {
+      messageEl.textContent = '메모를 입력해주세요.';
+      messageEl.style.display = 'block';
+      return;
+    }
+    const expenseData = { date, currency, amount, krwAmount, category, memo, spender: spender || SPENDER_UNKNOWN_LABEL };
     if (id) {
       updateExpense(id, expenseData);
     } else {
@@ -569,14 +587,24 @@ function bindPackingAddSheet() {
   });
 }
 
-function openParticipantSheet() {
+// Where closing the participant sheet should leave the user: back on the
+// 준비물 tab (normal case), or into the freshly-created event's dashboard
+// (when opened as the last step of creating a new event).
+let participantSheetReturnTo = 'packing';
+
+function openParticipantSheet(returnTo = 'packing') {
+  participantSheetReturnTo = returnTo;
   renderParticipantSheetBody();
   document.getElementById('participant-sheet').style.display = 'flex';
 }
 
 function closeParticipantSheet() {
   document.getElementById('participant-sheet').style.display = 'none';
-  renderPackingScreen();
+  if (participantSheetReturnTo === 'create') {
+    showScreen('dashboard');
+  } else {
+    renderPackingScreen();
+  }
 }
 
 function bindParticipantSheet() {

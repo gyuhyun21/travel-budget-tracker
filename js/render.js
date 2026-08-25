@@ -381,7 +381,7 @@ function renderExpenseFormScreen(editId = null) {
   ];
   const hasForeignCurrency = currencyOptions.length > 1;
   const selectedCurrency = existing?.currency || currencyOptions[0].id;
-  const selectedCategory = existing?.category || 'other';
+  const selectedCategory = existing?.category || '';
   const participants = getParticipants().map(p => p.name);
   const selectedSpender = existing?.spender || '';
 
@@ -417,7 +417,6 @@ function renderExpenseFormScreen(editId = null) {
           ${participants.length
             ? `<div class="ios-chip-row" id="spender-chip-row">${spenderChipsHtml(selectedSpender, participants)}</div>`
             : `<p class="field-hint" style="margin-top:0">준비물 탭의 참여자 관리에서 참여자를 추가하면 지정할 수 있어요.</p>`}
-          <p class="field-hint" style="margin:4px 0 0">선택하지 않으면 '${SPENDER_UNKNOWN_LABEL}'으로 기록돼요.</p>
 
           <label class="field-label" for="input-expense-memo">메모</label>
           <input type="text" id="input-expense-memo" value="${existing ? escapeHtml(existing.memo || '') : ''}" placeholder="예: 팟타이 점심">
@@ -434,17 +433,10 @@ function renderExpenseFormScreen(editId = null) {
 // Which sub-tab ("list" or "settlement") the 지출 목록 screen is showing.
 let expenseListView = 'list';
 
-function expenseListViewSegmentHtml(selected) {
-  const options = [
-    { id: 'list', label: '목록' },
-    { id: 'settlement', label: 'N빵' },
-  ];
-  const index = Math.max(0, options.findIndex(o => o.id === selected));
+function expenseListViewRowHtml(selected) {
   return `
-    <div class="ios-segment-thumb" style="--count:${options.length}; --index:${index}"></div>
-    ${options.map(o => `
-      <button type="button" class="ios-segment-btn expense-list-view-btn ${o.id === selected ? 'active' : ''}" data-value="${o.id}">${o.label}</button>
-    `).join('')}
+    <button type="button" class="ios-chip expense-list-view-btn ${selected === 'list' ? 'active' : ''}" data-value="list">목록</button>
+    <button type="button" class="expense-list-view-btn expense-settlement-btn ${selected === 'settlement' ? 'active' : ''}" data-value="settlement">N빵하기</button>
   `;
 }
 
@@ -457,7 +449,7 @@ function renderExpenseListScreen() {
       <h1 class="ios-large-title">지출 목록</h1>
       <button type="button" class="ios-header-action" id="btn-add-expense" aria-label="지출 추가">${ICON_PLUS}</button>
     </div>
-    <div class="ios-segment" id="expense-list-view-segment" style="margin-bottom:16px">${expenseListViewSegmentHtml(expenseListView)}</div>
+    <div class="expense-list-view-row" id="expense-list-view-segment" style="margin-bottom:16px">${expenseListViewRowHtml(expenseListView)}</div>
     ${expenseListView === 'settlement'
       ? settlementSectionHtml(expenses, participants)
       : `
