@@ -28,6 +28,18 @@ function eventKey(id, suffix) {
   return `cmb_event_${id}_${suffix}`;
 }
 
+// Date.now() has only millisecond resolution, so two events created or
+// touched in rapid synchronous succession can tie — which breaks "most
+// recently updated first" sorting on the events list. These timestamps are
+// never shown as wall-clock dates anywhere in the UI (grep confirms), only
+// used as a sort key, so guaranteeing strict monotonic increase matters
+// more here than real-time accuracy.
+let lastEventTimestamp = 0;
+function nextEventTimestamp() {
+  lastEventTimestamp = Math.max(Date.now(), lastEventTimestamp + 1);
+  return lastEventTimestamp;
+}
+
 function getEvents() {
   const raw = localStorage.getItem(EVENTS_KEY);
   return raw ? JSON.parse(raw) : [];
@@ -61,7 +73,7 @@ function updateEventMeta(id, fields) {
 function touchActiveEvent() {
   const id = getActiveEventId();
   if (!id) return;
-  updateEventMeta(id, { updatedAt: Date.now() });
+  updateEventMeta(id, { updatedAt: nextEventTimestamp() });
 }
 
 // Raw reads used only by the events list screen, which needs to display a
@@ -82,7 +94,7 @@ function readEventExpenses(id) {
 function createEvent(title) {
   const events = getEvents();
   const id = generateShortId();
-  const now = Date.now();
+  const now = nextEventTimestamp();
   events.push({ id, status: 'active', tripId: null, createdAt: now, updatedAt: now });
   saveEventsList(events);
   localStorage.setItem(eventKey(id, 'settings'), JSON.stringify({ tripName: title }));
@@ -160,7 +172,7 @@ function initSharedModeFromUrl() {
   const events = getEvents();
   let meta = events.find(e => e.tripId === urlTripId);
   if (!meta) {
-    meta = { id: urlTripId, status: 'active', tripId: urlTripId, createdAt: Date.now(), updatedAt: Date.now() };
+    meta = { id: urlTripId, status: 'active', tripId: urlTripId, createdAt: nextEventTimestamp(), updatedAt: nextEventTimestamp() };
     events.push(meta);
     saveEventsList(events);
   }
