@@ -11,7 +11,10 @@
 </head>
 <body>
   <main>
-    <section id="screen-dashboard" class="screen active">
+    <section id="screen-events" class="screen active">
+      <h2>모임</h2>
+    </section>
+    <section id="screen-dashboard" class="screen">
       <h2>대시보드</h2>
     </section>
     <section id="screen-add-expense" class="screen">
@@ -71,6 +74,16 @@
         <button type="button" class="ios-header-link" id="participant-sheet-close">닫기</button>
       </div>
       <div id="participant-sheet-body"></div>
+    </div>
+  </div>
+
+  <div id="event-create-sheet" class="dp-overlay" style="display:none">
+    <div class="dp-sheet">
+      <div class="dp-sheet-header">
+        <span class="dp-title">새 모임</span>
+        <button type="button" class="ios-header-link" id="event-create-close">닫기</button>
+      </div>
+      <div id="event-create-body"></div>
     </div>
   </div>
 
