@@ -350,12 +350,7 @@ function spenderSummaryHtml(expenses, participants) {
   `;
 }
 
-function currencySegmentedHtml(selected) {
-  const options = [
-    { id: 'THB', label: '바트' },
-    { id: 'USD', label: '달러' },
-    { id: 'KRW', label: '원화' },
-  ];
+function currencySegmentedHtml(selected, options) {
   const index = Math.max(0, options.findIndex(o => o.id === selected));
   return `
     <div class="ios-segment-thumb" style="--count:${options.length}; --index:${index}"></div>
@@ -378,7 +373,14 @@ function renderExpenseFormScreen(editId = null) {
   const existing = editId ? getExpenseById(editId) : null;
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const selectedCurrency = existing?.currency || 'THB';
+  const formSettings = getSettings() || {};
+  const currencyOptions = [
+    ...(formSettings.thbRate !== undefined ? [{ id: 'THB', label: '바트' }] : []),
+    ...(formSettings.usdRate !== undefined ? [{ id: 'USD', label: '달러' }] : []),
+    { id: 'KRW', label: '원화' },
+  ];
+  const hasForeignCurrency = currencyOptions.length > 1;
+  const selectedCurrency = existing?.currency || currencyOptions[0].id;
   const selectedCategory = existing?.category || 'other';
   const participants = getParticipants().map(p => p.name);
   const selectedSpender = existing?.spender || '';
@@ -400,8 +402,10 @@ function renderExpenseFormScreen(editId = null) {
           <label class="field-label" style="margin-top:0" for="input-expense-date">날짜</label>
           <input type="date" id="input-expense-date" value="${existing ? existing.date : today}" required>
 
-          <label class="field-label">통화</label>
-          <div class="ios-segment" id="currency-segmented">${currencySegmentedHtml(selectedCurrency)}</div>
+          ${hasForeignCurrency ? `
+            <label class="field-label">통화</label>
+            <div class="ios-segment" id="currency-segmented">${currencySegmentedHtml(selectedCurrency, currencyOptions)}</div>
+          ` : ''}
 
           <label class="field-label" for="input-expense-amount">금액</label>
           <input type="text" inputmode="decimal" class="input-money" id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
