@@ -189,29 +189,14 @@ function renderEventCreateSheetBody() {
 }
 
 function renderDashboardScreen() {
-  const settings = getSettings();
+  const settings = getSettings() || {};
   const container = document.getElementById('screen-dashboard');
-  if (!settings) {
-    container.innerHTML = `
-      <div class="ios-header"><h1 class="ios-large-title">대시보드</h1></div>
-      <div class="empty-state">
-        <div class="empty-icon">${ICON_INFO}</div>
-        <div class="empty-text">먼저 설정 화면에서<br>예산과 환율을 입력해주세요.</div>
-      </div>
-    `;
-    return;
-  }
   const expenses = getExpenses();
   const totalSpent = expenses.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
-  const remaining = Math.round(settings.totalBudget - totalSpent);
-  const percent = settings.totalBudget > 0
-    ? Math.min(100, Math.round((totalSpent / settings.totalBudget) * 100))
-    : 0;
-  const overBudget = remaining < 0;
-  const ringColor = overBudget ? 'var(--color-danger)' : percent >= 80 ? 'var(--color-warning)' : 'var(--color-success)';
-  const tripLabel = tripStatusLabel(settings);
   const tripName = settings.tripName?.trim();
-  document.title = tripName ? `${tripName} 가계부` : '여행 가계부';
+  document.title = tripName ? `${tripName} 가계부` : '모임 가계부';
+  const hasDates = settings.tripStartDate && settings.tripEndDate;
+  const tripLabel = hasDates ? tripStatusLabel(settings) : '';
   const sortedExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date));
 
   const byCategory = {};
@@ -235,37 +220,18 @@ function renderDashboardScreen() {
     ? '최근 지출'
     : `${getCategoryById(dashboardCategoryFilter).label} 지출`;
 
-  const ringAmountText = `${Math.abs(remaining).toLocaleString()}원`;
-  const ringFontSize = fitFontSize(ringAmountText, [[8, 20], [10, 17], [12, 15], [15, 12]]);
-  const totalBudgetText = `${settings.totalBudget.toLocaleString()}원`;
   const totalSpentText = `${Math.round(totalSpent).toLocaleString()}원`;
-  const statFontSize = (text) => fitFontSize(text, [[10, 17], [12, 14], [15, 12]]);
+  const totalFontSize = fitFontSize(totalSpentText, [[8, 40], [10, 34], [12, 28], [15, 22]]);
 
   container.innerHTML = `
     <div class="dashboard-hero">
+      <button type="button" class="hero-back-link" id="btn-back-to-events">← 모임 목록</button>
       <div class="ios-header">
-        <h1 class="ios-large-title">${tripName ? escapeHtml(tripName) : '대시보드'}</h1>
+        <h1 class="ios-large-title">${tripName ? escapeHtml(tripName) : '모임'}</h1>
       </div>
-      <p class="trip-pill">${tripLabel}</p>
-
-      <div class="budget-ring" style="--pct:${percent}; --ring-color:${ringColor}">
-        <div class="budget-ring-inner">
-          <div class="ring-amount" style="font-size:${ringFontSize}">${ringAmountText}</div>
-          <div class="ring-label">${overBudget ? '예산 초과' : '남음'}</div>
-          <div class="ring-pct">${percent}% 사용</div>
-        </div>
-      </div>
-
-      <div class="stat-row">
-        <div class="stat-chip">
-          <div class="stat-label">총 예산</div>
-          <div class="stat-value" style="font-size:${statFontSize(totalBudgetText)}">${totalBudgetText}</div>
-        </div>
-        <div class="stat-chip">
-          <div class="stat-label">총 지출</div>
-          <div class="stat-value" style="font-size:${statFontSize(totalSpentText)}">${totalSpentText}</div>
-        </div>
-      </div>
+      ${tripLabel ? `<p class="trip-pill">${tripLabel}</p>` : ''}
+      <div class="hero-total-label">총 지출</div>
+      <div class="hero-total-amount" style="font-size:${totalFontSize}">${totalSpentText}</div>
     </div>
 
     <button type="button" class="btn-primary btn-add-main" id="btn-add-expense">
