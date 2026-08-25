@@ -81,9 +81,16 @@ async function fsDeletePackingItem(tripId, id) {
 let unsubSettings = null;
 let unsubExpenses = null;
 let unsubPackingItems = null;
+// Bumped by unsubscribeFromTrip() so a subscribeToTrip() call still waiting
+// on firebaseReady can tell it's been superseded and must not attach its
+// listeners at all — otherwise they'd leak past the event switch that
+// cancelled them.
+let subscriptionGeneration = 0;
 
 function subscribeToTrip(tripId, { onSettings, onExpenses, onPackingItems }) {
+  const generation = ++subscriptionGeneration;
   window.firebaseReady.then(() => {
+    if (generation !== subscriptionGeneration) return;
     unsubSettings = window.fsOnSnapshot(window.fsDoc(window.fsDb, 'trips', tripId), (snap) => {
       onSettings(snap.exists() ? snap.data() : null);
     });
@@ -99,6 +106,7 @@ function subscribeToTrip(tripId, { onSettings, onExpenses, onPackingItems }) {
 }
 
 function unsubscribeFromTrip() {
+  subscriptionGeneration++;
   if (unsubSettings) { unsubSettings(); unsubSettings = null; }
   if (unsubExpenses) { unsubExpenses(); unsubExpenses = null; }
   if (unsubPackingItems) { unsubPackingItems(); unsubPackingItems = null; }

@@ -112,18 +112,25 @@ function deleteEvent(id) {
   if (getActiveEventId() === id) leaveEvent();
 }
 
-// Switches the active event. Always tears down any previous Firestore
-// listener first (a stale listener from the last event must never deliver
-// updates into the newly-opened one). Returns true if the event being
-// entered is shared, in which case the caller is responsible for calling
-// startSharedSync (mirrors today's initSharedModeFromUrl/boot() pattern).
-function enterEvent(id) {
+// Tears down any live Firestore subscription and clears the in-memory
+// shared-mode caches. Shared by enterEvent()/leaveEvent() so switching or
+// leaving an event always starts from the same clean slate.
+function resetSharedState() {
   unsubscribeFromTrip();
   sharedTripId = null;
   initialSyncDone = false;
   cachedSettings = null;
   cachedExpenses = [];
   cachedPackingItems = [];
+}
+
+// Switches the active event. Always tears down any previous Firestore
+// listener first (a stale listener from the last event must never deliver
+// updates into the newly-opened one). Returns true if the event being
+// entered is shared, in which case the caller is responsible for calling
+// startSharedSync (mirrors today's initSharedModeFromUrl/boot() pattern).
+function enterEvent(id) {
+  resetSharedState();
   setActiveEventId(id);
   const meta = getEvents().find(e => e.id === id);
   if (meta && meta.tripId) {
@@ -134,13 +141,11 @@ function enterEvent(id) {
 }
 
 function leaveEvent() {
-  unsubscribeFromTrip();
-  sharedTripId = null;
-  initialSyncDone = false;
-  cachedSettings = null;
-  cachedExpenses = [];
-  cachedPackingItems = [];
+  resetSharedState();
   setActiveEventId(null);
+  const url = new URL(window.location.href);
+  url.searchParams.delete('trip');
+  window.history.replaceState({}, '', url);
 }
 
 /* ---------- Shared-trip sync state ---------- */
@@ -170,7 +175,7 @@ function initSharedModeFromUrl() {
   const urlTripId = getTripIdFromUrl();
   if (!urlTripId) return false;
   const events = getEvents();
-  let meta = events.find(e => e.tripId === urlTripId);
+  let meta = events.find(e => e.tripId === urlTripId || e.id === urlTripId);
   if (!meta) {
     meta = { id: urlTripId, status: 'active', tripId: urlTripId, createdAt: nextEventTimestamp(), updatedAt: nextEventTimestamp() };
     events.push(meta);
@@ -200,6 +205,7 @@ function startSharedSync(onReady, onUpdate) {
   };
   subscribeToTrip(sharedTripId, {
     onSettings: (settings) => {
+      if (getActiveEventId() !== id) return;
       cachedSettings = settings;
       if (settings) localStorage.setItem(eventKey(id, 'settings'), JSON.stringify(settings));
       touchActiveEvent();
@@ -207,6 +213,7 @@ function startSharedSync(onReady, onUpdate) {
       maybeReady();
     },
     onExpenses: (expenses) => {
+      if (getActiveEventId() !== id) return;
       cachedExpenses = expenses;
       localStorage.setItem(eventKey(id, 'expenses'), JSON.stringify(expenses));
       touchActiveEvent();
@@ -214,6 +221,7 @@ function startSharedSync(onReady, onUpdate) {
       maybeReady();
     },
     onPackingItems: (items) => {
+      if (getActiveEventId() !== id) return;
       cachedPackingItems = items;
       localStorage.setItem(eventKey(id, 'packing'), JSON.stringify(items));
       touchActiveEvent();
@@ -266,6 +274,9 @@ function disableSharing() {
   if (settings) localStorage.setItem(eventKey(id, 'settings'), JSON.stringify(settings));
   localStorage.setItem(eventKey(id, 'expenses'), JSON.stringify(expenses));
   localStorage.setItem(eventKey(id, 'packing'), JSON.stringify(packingItems));
+  const url = new URL(window.location.href);
+  url.searchParams.delete('trip');
+  window.history.replaceState({}, '', url);
 }
 
 /* ---------- Active-event data (settings / expenses / packing) ---------- */

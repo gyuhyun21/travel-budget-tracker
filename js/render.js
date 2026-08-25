@@ -44,7 +44,7 @@ function renderShareSectionBody() {
     `;
   }
   return `
-    <p class="field-hint" style="margin:0 0 12px">링크를 만들어서 같이 여행하는 사람과 예산/지출을 실시간으로 같이 보고 편집할 수 있어요.</p>
+    <p class="field-hint" style="margin:0 0 12px">링크를 만들어서 같이 모임을 하는 사람과 지출을 실시간으로 같이 보고 편집할 수 있어요.</p>
     <button type="button" id="btn-start-sharing" class="btn-primary" style="margin-top:0">이 여행 공유하기</button>
   `;
 }

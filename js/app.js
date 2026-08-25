@@ -82,6 +82,17 @@ function bindEventCreateSheet() {
   });
 }
 
+// Lets the user bail out of the "불러오는 중" overlay if window.firebaseReady
+// never resolves (network down, Firebase SDK blocked) — otherwise the
+// overlay hides the nav bar and there's no way back to the events list.
+function bindSyncLoadingCancel() {
+  document.getElementById('btn-cancel-sync-loading').addEventListener('click', () => {
+    leaveEvent();
+    document.getElementById('sync-loading').style.display = 'none';
+    showScreen('events');
+  });
+}
+
 function bindSettingsForm() {
   const container = document.getElementById('screen-settings');
 
@@ -621,6 +632,7 @@ function bindParticipantSheet() {
 
 bindEventsScreen();
 bindEventCreateSheet();
+bindSyncLoadingCancel();
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
