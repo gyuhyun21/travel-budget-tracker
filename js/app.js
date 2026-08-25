@@ -4,11 +4,82 @@ function showScreen(name) {
   document.getElementById(`screen-${name}`).classList.add('active');
   const navBtn = document.querySelector(`.nav-btn[data-screen="${name}"]`);
   if (navBtn) navBtn.classList.add('active');
+  document.querySelector('.nav-bar').style.display = name === 'events' ? 'none' : 'flex';
+  if (name === 'events') renderEventsScreen();
   if (name === 'settings') renderSettingsScreen();
   if (name === 'dashboard') renderDashboardScreen();
   if (name === 'add-expense') renderExpenseFormScreen();
   if (name === 'expense-list') renderExpenseListScreen();
   if (name === 'packing') renderPackingScreen();
+}
+
+function openEventById(id) {
+  const shared = enterEvent(id);
+  if (shared) {
+    document.getElementById('sync-loading').style.display = 'flex';
+    startSharedSync(
+      () => {
+        document.getElementById('sync-loading').style.display = 'none';
+        showScreen('dashboard');
+      },
+      () => {
+        renderDashboardScreen();
+        renderExpenseListScreen();
+        renderPackingScreen();
+      }
+    );
+    return;
+  }
+  showScreen('dashboard');
+}
+
+function bindEventsScreen() {
+  document.getElementById('screen-events').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-create-event')) {
+      openEventCreateSheet();
+      return;
+    }
+
+    const filterTab = e.target.closest('.event-filter-tab');
+    if (filterTab) {
+      eventsFilter = filterTab.dataset.value;
+      renderEventsScreen();
+      return;
+    }
+
+    const card = e.target.closest('.event-card');
+    if (card) {
+      openEventById(card.dataset.id);
+    }
+  });
+}
+
+function openEventCreateSheet() {
+  renderEventCreateSheetBody();
+  document.getElementById('event-create-sheet').style.display = 'flex';
+  document.getElementById('input-new-event-title').focus();
+}
+
+function closeEventCreateSheet() {
+  document.getElementById('event-create-sheet').style.display = 'none';
+}
+
+function bindEventCreateSheet() {
+  const overlay = document.getElementById('event-create-sheet');
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.id === 'event-create-close') {
+      closeEventCreateSheet();
+      return;
+    }
+    if (e.target.id === 'btn-confirm-create-event') {
+      const input = document.getElementById('input-new-event-title');
+      const title = input.value.trim();
+      if (!title) { input.focus(); return; }
+      createEvent(title);
+      closeEventCreateSheet();
+      showScreen('dashboard');
+    }
+  });
 }
 
 function bindSettingsForm() {
@@ -275,8 +346,13 @@ function bindAddExpenseButtons() {
   });
 }
 
-function bindDashboardCategoryFilter() {
+function bindDashboardScreen() {
   document.getElementById('screen-dashboard').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-back-to-events')) {
+      leaveEvent();
+      showScreen('events');
+      return;
+    }
     const tab = e.target.closest('.filter-tab');
     if (!tab) return;
     dashboardCategoryFilter = tab.dataset.value;
@@ -511,11 +587,13 @@ function bindParticipantSheet() {
   });
 }
 
+bindEventsScreen();
+bindEventCreateSheet();
 bindSettingsForm();
 bindExpenseForm();
 bindExpenseList();
 bindAddExpenseButtons();
-bindDashboardCategoryFilter();
+bindDashboardScreen();
 bindBackupButtons();
 bindResetButton();
 bindDateRangeSheet();
@@ -549,7 +627,7 @@ function boot() {
     startSharedSync(
       () => {
         document.getElementById('sync-loading').style.display = 'none';
-        showScreen(getSettings() ? 'dashboard' : 'settings');
+        showScreen('dashboard');
       },
       () => {
         renderDashboardScreen();
@@ -559,7 +637,7 @@ function boot() {
     );
     return;
   }
-  showScreen(getSettings() ? 'dashboard' : 'settings');
+  showScreen('events');
 }
 
 if (!getUserName()) {
