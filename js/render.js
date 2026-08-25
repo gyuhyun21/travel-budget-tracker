@@ -381,7 +381,7 @@ function renderExpenseFormScreen(editId = null) {
   ];
   const hasForeignCurrency = currencyOptions.length > 1;
   const selectedCurrency = existing?.currency || currencyOptions[0].id;
-  const selectedCategory = existing?.category || '';
+  const selectedCategory = existing?.category || 'other';
   const participants = getParticipants().map(p => p.name);
   const selectedSpender = existing?.spender || '';
 
@@ -643,7 +643,10 @@ function renderParticipantSheetBody() {
   const participants = getParticipants();
   const container = document.getElementById('participant-sheet-body');
 
+  const isCreateFlow = participantSheetReturnTo === 'create';
+
   container.innerHTML = `
+    ${isCreateFlow ? `<p class="field-hint" style="margin:0 0 10px">지출한 사람을 기록하려면 참여자가 1명 이상 필요해요. 최소 한 명을 등록해주세요.</p>` : ''}
     ${participants.length ? `
       <p class="field-hint" style="margin:0 0 10px">인원수는 N빵 정산에서 그 사람 몫을 몇 인분으로 셀지에 쓰여요 (가족 단위 참여 시).</p>
       <div class="participant-list">
@@ -657,7 +660,7 @@ function renderParticipantSheetBody() {
           </div>
         `).join('')}
       </div>
-    ` : '<p class="field-hint" style="margin:0 0 12px">아직 참여자가 없어요.</p>'}
+    ` : (isCreateFlow ? '' : '<p class="field-hint" style="margin:0 0 12px">아직 참여자가 없어요.</p>')}
 
     <label class="field-label" for="input-new-participant">이름 추가</label>
     <input type="text" id="input-new-participant" placeholder="예: 규현" autocomplete="off">

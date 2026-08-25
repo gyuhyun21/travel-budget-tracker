@@ -324,11 +324,6 @@ function bindExpenseForm() {
       messageEl.style.display = 'block';
       return;
     }
-    if (!category) {
-      messageEl.textContent = '카테고리를 선택해주세요.';
-      messageEl.style.display = 'block';
-      return;
-    }
     if (hasParticipants && !spender) {
       messageEl.textContent = '지출한 사람을 선택해주세요.';
       messageEl.style.display = 'block';
@@ -599,6 +594,10 @@ function openParticipantSheet(returnTo = 'packing') {
 }
 
 function closeParticipantSheet() {
+  if (participantSheetReturnTo === 'create' && getParticipants().length === 0) {
+    alert('지출한 사람을 기록하려면 참여자가 1명 이상 필요해요. 먼저 등록해주세요.');
+    return;
+  }
   document.getElementById('participant-sheet').style.display = 'none';
   if (participantSheetReturnTo === 'create') {
     showScreen('dashboard');
