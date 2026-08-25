@@ -23,9 +23,8 @@ function shareUrlForTrip(tripId) {
   return url.toString();
 }
 
-async function fsCreateTrip(settings, expenses, packingItems) {
+async function fsCreateTrip(tripId, settings, expenses, packingItems) {
   await window.firebaseReady;
-  const tripId = generateShortId();
   await window.fsSetDoc(window.fsDoc(window.fsDb, 'trips', tripId), {
     ...settings,
     updatedAt: window.fsServerTimestamp()
