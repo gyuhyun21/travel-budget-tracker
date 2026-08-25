@@ -51,11 +51,19 @@ function renderShareSectionBody() {
 
 function renderSettingsScreen() {
   const settings = getSettings() || {};
-  const isFirstRun = Object.keys(settings).length === 0;
+  const activeEvent = getEvents().find(ev => ev.id === getActiveEventId());
+  const isCompleted = activeEvent?.status === 'completed';
+  const addedCurrencies = [
+    ...(settings.thbRate !== undefined ? [{ id: 'THB', label: '바트', rate: settings.thbRate }] : []),
+    ...(settings.usdRate !== undefined ? [{ id: 'USD', label: '달러', rate: settings.usdRate }] : []),
+  ];
+  const availableCurrencies = [
+    ...(settings.thbRate === undefined ? [{ id: 'THB', label: '바트' }] : []),
+    ...(settings.usdRate === undefined ? [{ id: 'USD', label: '달러' }] : []),
+  ];
   const container = document.getElementById('screen-settings');
   container.innerHTML = `
     <div class="ios-header"><h1 class="ios-large-title">설정</h1></div>
-    ${isFirstRun ? '<p class="banner-info" id="settings-first-run-banner">환영합니다! 제목과 예산, 환율을 먼저 설정해주세요.</p>' : ''}
 
     <h3 class="section-title">내 정보</h3>
     <div class="card-section">
@@ -73,20 +81,9 @@ function renderSettingsScreen() {
       <div class="card-section-pad">
         <form id="settings-form">
           <label class="field-label" style="margin-top:0" for="input-trip-name">제목</label>
-          <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 치앙마이 여행, 팀 워크샵">
+          <input type="text" id="input-trip-name" value="${escapeHtml(settings.tripName ?? '')}" placeholder="예: 8월 정기모임">
 
-          <label class="field-label" for="input-total-budget">총 예산 (원)</label>
-          <input type="text" inputmode="decimal" class="input-money" id="input-total-budget" value="${formatMoneyValue(settings.totalBudget)}" required>
-
-          <label class="field-label" for="input-thb-rate">1바트(THB) = ? 원</label>
-          <input type="text" inputmode="decimal" class="input-money" id="input-thb-rate" value="${formatMoneyValue(settings.thbRate ?? DEFAULT_THB_RATE)}" required>
-          ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
-
-          <label class="field-label" for="input-usd-rate">1달러(USD) = ? 원</label>
-          <input type="text" inputmode="decimal" class="input-money" id="input-usd-rate" value="${formatMoneyValue(settings.usdRate ?? DEFAULT_USD_RATE)}" required>
-          ${isFirstRun ? '<p class="field-hint">참고용 기준 환율이에요. 실제 환율에 맞게 확인·수정해주세요.</p>' : ''}
-
-          <label class="field-label" for="btn-open-daterange">여행 기간</label>
+          <label class="field-label" for="btn-open-daterange">기간 (선택)</label>
           <button type="button" class="date-range-field" id="btn-open-daterange">
             <span id="date-range-display">${dpFormatRange(settings.tripStartDate, settings.tripEndDate)}</span>
           </button>
@@ -98,14 +95,35 @@ function renderSettingsScreen() {
       </div>
     </div>
 
-    ${isFirstRun ? '' : `
-      <h3 class="section-title">공유</h3>
-      <div class="card-section">
-        <div class="card-section-pad">
-          ${renderShareSectionBody()}
-        </div>
+    <h3 class="section-title">환율 (해외통화)</h3>
+    <div class="card-section">
+      <div class="card-section-pad">
+        <form id="currency-rate-form">
+          ${addedCurrencies.length ? addedCurrencies.map(c => `
+            <div class="currency-rate-row">
+              <label class="field-label" style="margin-top:0">1${c.label}(${c.id}) = ? 원</label>
+              <div class="currency-rate-input-row">
+                <input type="text" inputmode="decimal" class="input-money currency-rate-input" data-currency="${c.id}" value="${formatMoneyValue(c.rate)}">
+                <button type="button" class="currency-remove-btn" data-currency="${c.id}" aria-label="삭제">✕</button>
+              </div>
+            </div>
+          `).join('') : '<p class="field-hint" style="margin:0 0 10px">기본은 원화만 사용해요. 해외 통화가 필요하면 아래에서 추가하세요.</p>'}
+          ${addedCurrencies.length ? '<button type="submit" class="btn-primary">환율 저장</button>' : ''}
+        </form>
+        ${availableCurrencies.length ? `
+          <div class="ios-chip-row" style="margin-top:${addedCurrencies.length ? '14px' : '0'}">
+            ${availableCurrencies.map(c => `<button type="button" class="ios-chip currency-add-chip" data-currency="${c.id}">${ICON_PLUS} ${c.label}</button>`).join('')}
+          </div>
+        ` : ''}
       </div>
-    `}
+    </div>
+
+    <h3 class="section-title">공유</h3>
+    <div class="card-section">
+      <div class="card-section-pad">
+        ${renderShareSectionBody()}
+      </div>
+    </div>
 
     <h3 class="section-title">데이터 백업</h3>
     <div class="card-section">
@@ -116,15 +134,21 @@ function renderSettingsScreen() {
       </div>
     </div>
 
-    ${isFirstRun ? '' : `
-      <h3 class="section-title">새 여행 준비</h3>
-      <div class="card-section">
-        <div class="card-section-pad">
-          <p class="field-hint" style="margin:0 0 12px">지금까지의 예산과 지출 기록을 모두 지우고, 다음 여행을 위해 처음부터 다시 설정해요. 필요하면 먼저 위에서 JSON으로 백업해두세요.</p>
-          <button id="btn-reset-data" type="button" class="btn-danger">예산 &amp; 지출 초기화</button>
-        </div>
+    <h3 class="section-title">모임 상태</h3>
+    <div class="card-section">
+      <div class="card-section-pad">
+        <button id="btn-toggle-event-status" type="button" class="btn-primary" style="margin-top:0">${isCompleted ? '다시 진행중으로 변경' : '모임 마무리'}</button>
+        <p class="field-hint" style="margin:8px 0 0">완료 표시는 목록에서의 분류일 뿐, 지출은 언제든 계속 추가·수정할 수 있어요.</p>
       </div>
-    `}
+    </div>
+
+    <h3 class="section-title">위험 구역</h3>
+    <div class="card-section">
+      <div class="card-section-pad">
+        <p class="field-hint" style="margin:0 0 12px">이 모임의 모든 지출·준비물 기록을 완전히 삭제합니다. 필요하면 먼저 위에서 JSON으로 백업해두세요.</p>
+        <button id="btn-delete-event" type="button" class="btn-danger">이 모임 삭제</button>
+      </div>
+    </div>
     <p id="settings-message" class="banner-info" style="display:none"></p>
   `;
 }

@@ -94,28 +94,30 @@ function bindSettingsForm() {
       renderSettingsScreen();
       return;
     }
-    if (e.target.id !== 'settings-form') return;
-    e.preventDefault();
-    const tripStartDate = document.getElementById('input-trip-start').value;
-    const tripEndDate = document.getElementById('input-trip-end').value;
-    const message = document.getElementById('settings-message');
-    if (!tripStartDate || !tripEndDate) {
-      message.textContent = '여행 기간을 선택해주세요.';
-      message.classList.add('banner-error');
-      message.style.display = 'block';
+    if (e.target.id === 'settings-form') {
+      e.preventDefault();
+      const tripStartDate = document.getElementById('input-trip-start').value;
+      const tripEndDate = document.getElementById('input-trip-end').value;
+      const settings = {
+        ...(getSettings() || {}),
+        tripName: document.getElementById('input-trip-name').value.trim(),
+        tripStartDate: tripStartDate || undefined,
+        tripEndDate: tripEndDate || undefined
+      };
+      saveSettings(settings);
+      showScreen('dashboard');
       return;
     }
-    const settings = {
-      ...(getSettings() || {}),
-      tripName: document.getElementById('input-trip-name').value.trim(),
-      totalBudget: parseMoneyInput(document.getElementById('input-total-budget').value),
-      thbRate: parseMoneyInput(document.getElementById('input-thb-rate').value),
-      usdRate: parseMoneyInput(document.getElementById('input-usd-rate').value),
-      tripStartDate,
-      tripEndDate
-    };
-    saveSettings(settings);
-    showScreen('dashboard');
+    if (e.target.id === 'currency-rate-form') {
+      e.preventDefault();
+      const settings = { ...(getSettings() || {}) };
+      document.querySelectorAll('.currency-rate-input').forEach(input => {
+        const field = input.dataset.currency === 'THB' ? 'thbRate' : 'usdRate';
+        settings[field] = parseMoneyInput(input.value);
+      });
+      saveSettings(settings);
+      renderSettingsScreen();
+    }
   });
 
   container.addEventListener('input', (e) => {
@@ -168,6 +170,27 @@ function bindSettingsForm() {
       if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
       disableSharing();
       renderSettingsScreen();
+    }
+
+    const addCurrencyChip = e.target.closest('.currency-add-chip');
+    if (addCurrencyChip) {
+      const settings = getSettings() || {};
+      const currency = addCurrencyChip.dataset.currency;
+      const field = currency === 'THB' ? 'thbRate' : 'usdRate';
+      const defaultRate = currency === 'THB' ? DEFAULT_THB_RATE : DEFAULT_USD_RATE;
+      saveSettings({ ...settings, [field]: defaultRate });
+      renderSettingsScreen();
+      return;
+    }
+
+    const removeCurrencyBtn = e.target.closest('.currency-remove-btn');
+    if (removeCurrencyBtn) {
+      const settings = { ...(getSettings() || {}) };
+      const field = removeCurrencyBtn.dataset.currency === 'THB' ? 'thbRate' : 'usdRate';
+      delete settings[field];
+      saveSettings(settings);
+      renderSettingsScreen();
+      return;
     }
   });
 }
@@ -428,12 +451,21 @@ function bindBackupButtons() {
   });
 }
 
-function bindResetButton() {
+function bindEventStatusButtons() {
   document.getElementById('screen-settings').addEventListener('click', (e) => {
-    if (e.target.id !== 'btn-reset-data') return;
-    if (!confirm('예산과 지출 기록을 모두 삭제하고 처음부터 다시 시작합니다. 계속할까요?')) return;
-    resetAllData();
-    showScreen('settings');
+    if (e.target.id === 'btn-toggle-event-status') {
+      const id = getActiveEventId();
+      const meta = getEvents().find(ev => ev.id === id);
+      const nextStatus = meta?.status === 'completed' ? 'active' : 'completed';
+      updateEventMeta(id, { status: nextStatus });
+      renderSettingsScreen();
+      return;
+    }
+    if (e.target.id === 'btn-delete-event') {
+      if (!confirm('이 모임의 모든 기록을 완전히 삭제합니다. 되돌릴 수 없어요. 계속할까요?')) return;
+      deleteEvent(getActiveEventId());
+      showScreen('events');
+    }
   });
 }
 
@@ -595,7 +627,7 @@ bindExpenseList();
 bindAddExpenseButtons();
 bindDashboardScreen();
 bindBackupButtons();
-bindResetButton();
+bindEventStatusButtons();
 bindDateRangeSheet();
 bindPackingScreen();
 bindPackingAddSheet();
