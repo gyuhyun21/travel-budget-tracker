@@ -3,6 +3,9 @@
 // any expenses (see renderDashboardScreen).
 let dashboardCategoryFilter = 'all';
 
+// Which filter chip ("all"/"active"/"completed") the 모임 목록 screen is showing.
+let eventsFilter = 'all';
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
@@ -123,6 +126,65 @@ function renderSettingsScreen() {
       </div>
     `}
     <p id="settings-message" class="banner-info" style="display:none"></p>
+  `;
+}
+
+function renderEventsScreen() {
+  const container = document.getElementById('screen-events');
+  const events = [...getEvents()].sort((a, b) => b.updatedAt - a.updatedAt);
+  const enriched = events.map(ev => {
+    const settings = readEventSettings(ev.id);
+    const expenses = readEventExpenses(ev.id);
+    const totalSpent = expenses.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
+    const hasDates = settings.tripStartDate && settings.tripEndDate;
+    return {
+      ...ev,
+      title: settings.tripName?.trim() || '제목 없음',
+      dateLabel: hasDates ? dpFormatRange(settings.tripStartDate, settings.tripEndDate) : '',
+      totalSpent
+    };
+  });
+  const filtered = eventsFilter === 'all' ? enriched : enriched.filter(ev => ev.status === eventsFilter);
+
+  container.innerHTML = `
+    <div class="ios-header">
+      <h1 class="ios-large-title">모임</h1>
+      <button type="button" class="ios-header-action" id="btn-create-event" aria-label="새 모임">${ICON_PLUS}</button>
+    </div>
+    ${enriched.length ? `
+      <div class="ios-chip-row" id="events-filter-row" style="margin-bottom:16px">
+        <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'all' ? 'active' : ''}" data-value="all">전체</button>
+        <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'active' ? 'active' : ''}" data-value="active">진행중</button>
+        <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'completed' ? 'active' : ''}" data-value="completed">완료</button>
+      </div>
+    ` : ''}
+    ${filtered.length ? `
+      <div class="card-section">
+        ${filtered.map(ev => `
+          <button type="button" class="event-card" data-id="${ev.id}">
+            <span class="event-card-main">
+              <span class="event-card-title">${escapeHtml(ev.title)}</span>
+              <span class="event-card-meta">${ev.dateLabel ? `${escapeHtml(ev.dateLabel)} · ` : ''}${Math.round(ev.totalSpent).toLocaleString()}원</span>
+            </span>
+            <span class="event-status-badge ${ev.status === 'completed' ? 'completed' : ''}">${ev.status === 'completed' ? '완료' : '진행중'}</span>
+          </button>
+        `).join('')}
+      </div>
+    ` : `
+      <div class="empty-state">
+        <div class="empty-icon">${ICON_RECEIPT}</div>
+        <div class="empty-text">아직 모임이 없어요.<br>오른쪽 위 + 버튼으로 새 모임을 만들어보세요.</div>
+      </div>
+    `}
+  `;
+}
+
+function renderEventCreateSheetBody() {
+  const container = document.getElementById('event-create-body');
+  container.innerHTML = `
+    <label class="field-label" style="margin-top:0" for="input-new-event-title">모임 제목</label>
+    <input type="text" id="input-new-event-title" placeholder="예: 8월 정기모임" autocomplete="off">
+    <button type="button" class="btn-primary" id="btn-confirm-create-event">만들기</button>
   `;
 }
 
