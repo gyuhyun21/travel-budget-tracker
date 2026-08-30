@@ -155,7 +155,11 @@ function renderSettingsScreen() {
 
 function renderEventsScreen() {
   const container = document.getElementById('screen-events');
-  const events = [...getEvents()].sort((a, b) => b.updatedAt - a.updatedAt);
+  // 완료된 모임은 항상 진행중인 모임 아래로 — 상태가 같으면 최근 수정순.
+  const events = [...getEvents()].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'completed' ? 1 : -1;
+    return b.updatedAt - a.updatedAt;
+  });
   const enriched = events.map(ev => {
     const settings = readEventSettings(ev.id);
     const expenses = readEventExpenses(ev.id);
@@ -179,7 +183,6 @@ function renderEventsScreen() {
       <div class="ios-chip-row" id="events-filter-row" style="margin-bottom:16px">
         <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'all' ? 'active' : ''}" data-value="all">전체</button>
         <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'active' ? 'active' : ''}" data-value="active">진행중</button>
-        <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'completed' ? 'active' : ''}" data-value="completed">완료</button>
       </div>
     ` : ''}
     ${filtered.length ? `
