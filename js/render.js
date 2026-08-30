@@ -252,7 +252,7 @@ function renderDashboardScreen() {
 
   container.innerHTML = `
     <div class="dashboard-hero">
-      <button type="button" class="hero-back-link" id="btn-back-to-events">← 모임 목록</button>
+      <button type="button" class="hero-back-link" id="btn-back-to-events">← 전체모임목록</button>
       <div class="ios-header">
         <h1 class="ios-large-title">${tripName ? escapeHtml(tripName) : '모임'}</h1>
       </div>
