@@ -6,8 +6,33 @@
 <meta name="theme-color" content="#0B0D1A">
 <title>여행 가계부</title>
 <link rel="stylesheet" href="css/style.css">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="app-manifest-link">
 <link rel="icon" href="icons/icon.svg">
+<script>
+// iOS's "Add to Home Screen" reads start_url from the manifest at the
+// moment it's tapped, not the page's current address — so a shared
+// ?list=... link opened in Safari then added to the home screen would
+// otherwise always relaunch at a bare index.html with no list id. iOS
+// Home Screen apps also run in a storage silo separate from Safari, so
+// the joined list's id in localStorage isn't visible there either —
+// baking the list id into start_url is what lets a fresh install still
+// find its way back to the right shared list on first launch.
+(function () {
+  var listId = new URLSearchParams(window.location.search).get('list');
+  if (!listId) return;
+  fetch('manifest.json')
+    .then(function (res) { return res.json(); })
+    .then(function (manifest) {
+      var startUrl = new URL('./index.html?list=' + encodeURIComponent(listId), window.location.href);
+      var scopeUrl = new URL('./', window.location.href);
+      manifest.start_url = startUrl.href;
+      manifest.scope = scopeUrl.href;
+      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      document.getElementById('app-manifest-link').setAttribute('href', URL.createObjectURL(blob));
+    })
+    .catch(function () {});
+})();
+</script>
 </head>
 <body>
   <main>
