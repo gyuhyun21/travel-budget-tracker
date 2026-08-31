@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   collection, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
@@ -19,6 +19,7 @@ const db = getFirestore(app);
 window.fsDb = db;
 window.fsDoc = doc;
 window.fsGetDoc = getDoc;
+window.fsGetDocs = getDocs;
 window.fsSetDoc = setDoc;
 window.fsUpdateDoc = updateDoc;
 window.fsDeleteDoc = deleteDoc;

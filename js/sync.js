@@ -1,4 +1,16 @@
 const TRIP_ID_PARAM = 'trip';
+const LIST_ID_PARAM = 'list';
+
+function getListIdFromUrl() {
+  return new URLSearchParams(window.location.search).get(LIST_ID_PARAM);
+}
+
+function shareUrlForList(listId) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set(LIST_ID_PARAM, listId);
+  return url.toString();
+}
 
 window.firebaseReady = new Promise((resolve) => {
   if (window.fsDb) { resolve(); return; }
@@ -78,6 +90,42 @@ async function fsDeletePackingItem(tripId, id) {
   await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'trips', tripId, 'packingItems', id));
 }
 
+async function fsCreateList(listId) {
+  await window.firebaseReady;
+  await window.fsSetDoc(window.fsDoc(window.fsDb, 'lists', listId), {
+    createdAt: window.fsServerTimestamp()
+  });
+}
+
+async function fsAddListEvent(listId, eventId) {
+  await window.firebaseReady;
+  await window.fsSetDoc(window.fsDoc(window.fsDb, 'lists', listId, 'events', eventId), {
+    addedAt: window.fsServerTimestamp()
+  });
+}
+
+async function fsRemoveListEvent(listId, eventId) {
+  await window.firebaseReady;
+  await window.fsDeleteDoc(window.fsDoc(window.fsDb, 'lists', listId, 'events', eventId));
+}
+
+// One-time read of a trip's full data (settings + both subcollections),
+// as opposed to subscribeToTrip's live listener. Used when a device needs
+// to display or copy a trip's data without opening a standing live
+// connection to it (e.g. showing a newly-joined shared event on the
+// events list before the user has ever opened it).
+async function fsFetchTripOnce(tripId) {
+  await window.firebaseReady;
+  const settingsSnap = await window.fsGetDoc(window.fsDoc(window.fsDb, 'trips', tripId));
+  const expensesSnap = await window.fsGetDocs(window.fsCollection(window.fsDb, 'trips', tripId, 'expenses'));
+  const packingSnap = await window.fsGetDocs(window.fsCollection(window.fsDb, 'trips', tripId, 'packingItems'));
+  return {
+    settings: settingsSnap.exists() ? settingsSnap.data() : null,
+    expenses: expensesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    packingItems: packingSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  };
+}
+
 let unsubSettings = null;
 let unsubExpenses = null;
 let unsubPackingItems = null;
@@ -110,4 +158,27 @@ function unsubscribeFromTrip() {
   if (unsubSettings) { unsubSettings(); unsubSettings = null; }
   if (unsubExpenses) { unsubExpenses(); unsubExpenses = null; }
   if (unsubPackingItems) { unsubPackingItems(); unsubPackingItems = null; }
+}
+
+// Separate subscription state from the trip-level one above — a device
+// can be watching its shared list's membership AND have one event open at
+// the same time, and the two must never interfere with each other's
+// generation counters or unsub handles.
+let unsubListEvents = null;
+let listSubscriptionGeneration = 0;
+
+function subscribeToList(listId, onEventIds) {
+  const generation = ++listSubscriptionGeneration;
+  window.firebaseReady.then(() => {
+    if (generation !== listSubscriptionGeneration) return;
+    unsubListEvents = window.fsOnSnapshot(
+      window.fsCollection(window.fsDb, 'lists', listId, 'events'),
+      (snap) => onEventIds(snap.docs.map(d => d.id))
+    );
+  });
+}
+
+function unsubscribeFromList() {
+  listSubscriptionGeneration++;
+  if (unsubListEvents) { unsubListEvents(); unsubListEvents = null; }
 }
