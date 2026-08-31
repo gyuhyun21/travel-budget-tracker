@@ -35,6 +35,11 @@ function openEventById(id) {
 
 function bindEventsScreen() {
   document.getElementById('screen-events').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-share-list')) {
+      openListShareSheet();
+      return;
+    }
+
     if (e.target.closest('#btn-create-event')) {
       openEventCreateSheet();
       return;
@@ -64,9 +69,73 @@ function closeEventCreateSheet() {
   document.getElementById('event-create-sheet').style.display = 'none';
 }
 
+function openListShareSheet() {
+  renderListShareSheetBody();
+  document.getElementById('list-share-sheet').style.display = 'flex';
+}
+
+function closeListShareSheet() {
+  document.getElementById('list-share-sheet').style.display = 'none';
+}
+
+function bindListShareSheet() {
+  const overlay = document.getElementById('list-share-sheet');
+  overlay.addEventListener('click', async (e) => {
+    if (e.target === overlay || e.target.id === 'list-share-close') {
+      closeListShareSheet();
+      return;
+    }
+
+    if (e.target.id === 'btn-start-list-sharing') {
+      e.target.disabled = true;
+      e.target.textContent = '공유 링크 만드는 중...';
+      try {
+        await shareEventsList();
+        openListShareSheet();
+        renderEventsScreen();
+      } catch (err) {
+        alert('공유 링크를 만들지 못했습니다. 네트워크 연결을 확인해주세요.');
+        e.target.disabled = false;
+        e.target.textContent = '목록 공유하기';
+      }
+      return;
+    }
+
+    if (e.target.id === 'btn-copy-share-link') {
+      const link = e.target.dataset.link;
+      const title = e.target.dataset.title;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: `${title} 같이 보기`, url: link });
+        } catch (err) {
+          // user closed the share sheet without picking anything — not an error
+        }
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(link);
+        const original = e.target.textContent;
+        e.target.textContent = '복사됨!';
+        setTimeout(() => { e.target.textContent = original; }, 1500);
+      } catch (err) {
+        prompt('아래 링크를 복사하세요:', link);
+      }
+      return;
+    }
+
+    if (e.target.id === 'btn-stop-list-sharing') {
+      if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
+      e.target.disabled = true;
+      await stopSharingEventsList();
+      closeListShareSheet();
+      renderEventsScreen();
+    }
+  });
+}
+
 function bindEventCreateSheet() {
   const overlay = document.getElementById('event-create-sheet');
-  overlay.addEventListener('click', (e) => {
+  overlay.addEventListener('click', async (e) => {
     if (e.target === overlay || e.target.id === 'event-create-close') {
       closeEventCreateSheet();
       return;
@@ -75,7 +144,25 @@ function bindEventCreateSheet() {
       const input = document.getElementById('input-new-event-title');
       const title = input.value.trim();
       if (!title) { input.focus(); return; }
-      createEvent(title);
+      const listId = getSharedListId();
+      if (listId) {
+        e.target.disabled = true;
+        e.target.textContent = '만드는 중...';
+        const id = createEvent(title);
+        try {
+          await ensureEventIsShared(id);
+          await fsAddListEvent(listId, id);
+          // Nothing was written to this event in the gap above (the sheet
+          // stayed open and blocked input the whole time), so promoting it
+          // now safely picks up the tripId that ensureEventIsShared just
+          // set and starts live sync for it — no data to lose.
+          promoteActiveEventToShared(id);
+        } catch (err) {
+          alert('모임을 만들었지만 공유 목록에 등록하지 못했습니다. 네트워크를 확인하고 다시 시도해주세요.');
+        }
+      } else {
+        createEvent(title);
+      }
       closeEventCreateSheet();
       // New event, nobody added yet — walk straight into participant entry
       // before landing on the dashboard, so N빵 has someone to split with.
@@ -141,48 +228,6 @@ function bindSettingsForm() {
     if (e.target.closest('#btn-open-daterange')) {
       openDateRangeSheet();
       return;
-    }
-
-    if (e.target.id === 'btn-start-sharing') {
-      e.target.disabled = true;
-      e.target.textContent = '공유 링크 만드는 중...';
-      try {
-        await enableSharingForCurrentData();
-        renderSettingsScreen();
-      } catch (err) {
-        alert('공유 링크를 만들지 못했습니다. 네트워크 연결을 확인해주세요.');
-        e.target.disabled = false;
-        e.target.textContent = '이 여행 공유하기';
-      }
-      return;
-    }
-
-    if (e.target.id === 'btn-copy-share-link') {
-      const link = e.target.dataset.link;
-      const title = e.target.dataset.title;
-      if (navigator.share) {
-        try {
-          await navigator.share({ title, text: `${title} 같이 보기`, url: link });
-        } catch (err) {
-          // user closed the share sheet without picking anything — not an error
-        }
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(link);
-        const original = e.target.textContent;
-        e.target.textContent = '복사됨!';
-        setTimeout(() => { e.target.textContent = original; }, 1500);
-      } catch (err) {
-        prompt('아래 링크를 복사하세요:', link);
-      }
-      return;
-    }
-
-    if (e.target.id === 'btn-stop-sharing') {
-      if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
-      disableSharing();
-      renderSettingsScreen();
     }
 
     const addCurrencyChip = e.target.closest('.currency-add-chip');
@@ -659,6 +704,7 @@ function bindParticipantSheet() {
 
 bindEventsScreen();
 bindEventCreateSheet();
+bindListShareSheet();
 bindSyncLoadingCancel();
 bindSettingsForm();
 bindExpenseForm();
@@ -693,21 +739,7 @@ function showUsernamePrompt(onDone) {
 }
 
 function boot() {
-  if (initSharedModeFromUrl()) {
-    document.getElementById('sync-loading').style.display = 'flex';
-    startSharedSync(
-      () => {
-        document.getElementById('sync-loading').style.display = 'none';
-        showScreen('dashboard');
-      },
-      () => {
-        renderDashboardScreen();
-        renderExpenseListScreen();
-        renderPackingScreen();
-      }
-    );
-    return;
-  }
+  resumeOrJoinSharedList();
   showScreen('events');
 }
 
