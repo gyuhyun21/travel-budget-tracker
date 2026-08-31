@@ -194,10 +194,6 @@ function isSharedMode() {
   return !!sharedTripId;
 }
 
-function getSharedTripId() {
-  return sharedTripId;
-}
-
 // Fires whenever the shared list's membership changes (including the
 // very first snapshot). Registers any event id this device doesn't
 // already know about, fetching a one-time snapshot of its data so the

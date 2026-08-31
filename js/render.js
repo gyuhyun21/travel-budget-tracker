@@ -27,28 +27,6 @@ function fitFontSize(text, thresholds) {
   return `${thresholds[thresholds.length - 1][1]}px`;
 }
 
-function renderShareSectionBody() {
-  if (isSharedMode()) {
-    const link = shareUrlForTrip(getSharedTripId());
-    const tripName = getSettings()?.tripName?.trim();
-    const shareTitle = tripName ? `${tripName} 가계부` : '여행 가계부';
-    const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
-    return `
-      <span class="share-badge"><span class="dot"></span>실시간 공유 중</span>
-      <p class="field-hint" style="margin:0 0 10px">이 링크가 있는 사람은 누구나 같이 보고 편집할 수 있어요.</p>
-      <div class="share-link-box">
-        <span>${escapeHtml(link)}</span>
-        <button type="button" id="btn-copy-share-link" data-link="${escapeHtml(link)}" data-title="${escapeHtml(shareTitle)}">${canNativeShare ? '공유' : '복사'}</button>
-      </div>
-      <button type="button" id="btn-stop-sharing" class="btn-danger">공유 중지 (이 기기만 로컬로 전환)</button>
-    `;
-  }
-  return `
-    <p class="field-hint" style="margin:0 0 12px">링크를 만들어서 같이 모임을 하는 사람과 지출을 실시간으로 같이 보고 편집할 수 있어요.</p>
-    <button type="button" id="btn-start-sharing" class="btn-primary" style="margin-top:0">이 여행 공유하기</button>
-  `;
-}
-
 function renderSettingsScreen() {
   const settings = getSettings() || {};
   const activeEvent = getEvents().find(ev => ev.id === getActiveEventId());
@@ -118,13 +96,6 @@ function renderSettingsScreen() {
       </div>
     </div>
 
-    <h3 class="section-title">공유</h3>
-    <div class="card-section">
-      <div class="card-section-pad">
-        ${renderShareSectionBody()}
-      </div>
-    </div>
-
     <h3 class="section-title">데이터 백업</h3>
     <div class="card-section">
       <div class="card-section-pad">
@@ -177,7 +148,10 @@ function renderEventsScreen() {
   container.innerHTML = `
     <div class="ios-header">
       <h1 class="ios-large-title">모임비용정리 1/n</h1>
-      <button type="button" class="ios-header-action" id="btn-create-event" aria-label="새 모임">${ICON_PLUS}</button>
+      <div class="ios-header-actions">
+        <button type="button" class="ios-header-action" id="btn-share-list" aria-label="목록 공유">${ICON_SHARE}</button>
+        <button type="button" class="ios-header-action" id="btn-create-event" aria-label="새 모임">${ICON_PLUS}</button>
+      </div>
     </div>
     ${enriched.length ? `
       <div class="ios-chip-row" id="events-filter-row" style="margin-bottom:16px">
@@ -212,6 +186,29 @@ function renderEventCreateSheetBody() {
     <label class="field-label" style="margin-top:0" for="input-new-event-title">모임 제목</label>
     <input type="text" id="input-new-event-title" placeholder="예: 8월 정기모임" autocomplete="off">
     <button type="button" class="btn-primary" id="btn-confirm-create-event">만들기</button>
+  `;
+}
+
+function renderListShareSheetBody() {
+  const container = document.getElementById('list-share-body');
+  const listId = getSharedListId();
+  if (listId) {
+    const link = shareUrlForList(listId);
+    const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+    container.innerHTML = `
+      <span class="share-badge"><span class="dot"></span>실시간 공유 중</span>
+      <p class="field-hint" style="margin:0 0 10px">이 링크가 있는 사람은 누구나 전체 모임 목록을 보고, 모임을 추가하고, 지출을 기록할 수 있어요.</p>
+      <div class="share-link-box">
+        <span>${escapeHtml(link)}</span>
+        <button type="button" id="btn-copy-share-link" data-link="${escapeHtml(link)}" data-title="모임비용정리 1/n">${canNativeShare ? '공유' : '복사'}</button>
+      </div>
+      <button type="button" id="btn-stop-list-sharing" class="btn-danger">공유 중지 (이 기기만 로컬로 전환)</button>
+    `;
+    return;
+  }
+  container.innerHTML = `
+    <p class="field-hint" style="margin:0 0 12px">이 목록을 공유하면 링크를 가진 사람 누구나 모든 모임을 보고, 지출을 기록하고, 새 모임을 추가할 수 있어요.</p>
+    <button type="button" id="btn-start-list-sharing" class="btn-primary" style="margin-top:0">목록 공유하기</button>
   `;
 }
 
