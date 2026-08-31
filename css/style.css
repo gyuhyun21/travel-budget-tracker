@@ -98,6 +98,7 @@ body {
   margin-bottom: 2px;
 }
 .ios-header-action svg { width: 17px; height: 17px; }
+.ios-header-actions { display: flex; align-items: center; gap: 8px; }
 .ios-header-link {
   background: none;
   border: none;
