@@ -133,7 +133,7 @@ function deleteEvent(id) {
   const meta = getEvents().find(e => e.id === id);
   if (getActiveEventId() === id && isSharedMode()) disableSharing();
   if (meta?.tripId && getSharedListId()) {
-    fsRemoveListEvent(getSharedListId(), meta.tripId);
+    fsRemoveListEvent(getSharedListId(), id).catch(() => {});
   }
   const events = getEvents().filter(e => e.id !== id);
   saveEventsList(events);
@@ -195,35 +195,74 @@ function isSharedMode() {
 }
 
 // Fires whenever the shared list's membership changes (including the
-// very first snapshot). Registers any event id this device doesn't
-// already know about, fetching a one-time snapshot of its data so the
-// events list can show a real title/total for it before the user ever
-// opens it (opening it later starts the normal live subscription via
-// enterEvent/startSharedSync, unrelated to this one-time fetch).
+// very first snapshot). Reconciles this device's local events against
+// that membership in three ways: (1) an id this device has never seen
+// gets registered as a new local event; (2) a local event this device
+// already has, but whose tripId isn't set yet (e.g. a previous share
+// attempt partially failed, or this device is rejoining a list it left
+// before), gets linked up and its data refreshed from Firestore; (3) a
+// local event that HAS a tripId but is no longer a member (someone else
+// deleted it) gets unlinked back to local-only, exactly like disableSharing
+// does for the active event. Removal is skipped on a from-cache snapshot
+// (offline / first paint before the network snapshot arrives) — an empty
+// cached snapshot must never be read as "everything was deleted".
 function startListSync() {
   const listId = getSharedListId();
   if (!listId) return;
-  subscribeToList(listId, (eventIds) => {
+  subscribeToList(listId, (eventIds, fromCache) => {
     const events = getEvents();
+    const memberIds = new Set(eventIds);
     const knownIds = new Set(events.map(e => e.id));
-    const newIds = eventIds.filter(eid => !knownIds.has(eid));
-    if (newIds.length === 0) return;
-    for (const eventId of newIds) {
-      const now = nextEventTimestamp();
-      events.push({ id: eventId, status: 'active', tripId: eventId, createdAt: now, updatedAt: now });
-    }
-    saveEventsList(events);
     const rerenderIfOnEventsScreen = () => {
       if (document.getElementById('screen-events')?.classList.contains('active')) renderEventsScreen();
     };
-    for (const eventId of newIds) {
+
+    const newIds = eventIds.filter(eid => !knownIds.has(eid));
+    const relinkIds = events.filter(e => memberIds.has(e.id) && !e.tripId).map(e => e.id);
+    const unlinkIds = fromCache ? [] : events.filter(e => e.tripId && !memberIds.has(e.id)).map(e => e.id);
+
+    if (newIds.length > 0) {
+      for (const eventId of newIds) {
+        const now = nextEventTimestamp();
+        events.push({ id: eventId, status: 'active', tripId: eventId, createdAt: now, updatedAt: now });
+      }
+    }
+    for (const eventId of relinkIds) {
+      updateEventMetaIn(events, eventId, { tripId: eventId });
+    }
+    for (const eventId of unlinkIds) {
+      if (eventId === getActiveEventId() && isSharedMode()) {
+        disableSharing();
+      }
+      // Clear the in-memory copy in BOTH cases. disableSharing() persists
+      // tripId:null itself (via updateEventMeta, which re-reads localStorage),
+      // but `events` was read before that and still carries the old tripId —
+      // without this, the saveEventsList(events) below would write the stale
+      // tripId straight back over disableSharing()'s clear, and the next
+      // enterEvent() would resume live sync against a deleted trip doc and
+      // wipe this event's local data.
+      updateEventMetaIn(events, eventId, { tripId: null });
+    }
+    if (newIds.length > 0 || relinkIds.length > 0 || unlinkIds.length > 0) {
+      saveEventsList(events);
+    }
+
+    for (const eventId of [...newIds, ...relinkIds]) {
       fsFetchTripOnce(eventId)
         .then(data => writeEventSnapshot(eventId, data))
         .catch(() => {})
         .finally(rerenderIfOnEventsScreen);
     }
-    rerenderIfOnEventsScreen();
+    if (unlinkIds.length > 0) rerenderIfOnEventsScreen();
   });
+}
+
+// Same-shape helper as updateEventMeta(id, patch), but operates on an
+// events array already in hand (avoids re-reading+re-saving cmb_events
+// once per id when startListSync's reconcile touches several ids at once).
+function updateEventMetaIn(events, id, patch) {
+  const meta = events.find(e => e.id === id);
+  if (meta) Object.assign(meta, patch);
 }
 
 // Call once at startup. If the page was opened with ?list=ID, binds this
@@ -231,14 +270,25 @@ function startListSync() {
 // previously in, if different). Otherwise, if this device was already in
 // a shared list from a previous session, resumes watching it. Returns
 // true if this device ends up in shared-list mode either way.
-function resumeOrJoinSharedList() {
+async function resumeOrJoinSharedList() {
   const urlListId = getListIdFromUrl();
   const storedListId = getSharedListId();
   const listId = urlListId || storedListId;
   if (!listId) return false;
+
   if (urlListId && urlListId !== storedListId) {
+    await window.firebaseReady;
+    const listDoc = await window.fsGetDoc(window.fsDoc(window.fsDb, 'lists', listId));
+    if (!listDoc.exists()) {
+      alert('공유 링크가 유효하지 않습니다 (목록을 찾을 수 없어요). 모임 목록 화면으로 이동합니다.');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('list');
+      window.history.replaceState({}, '', url);
+      return false;
+    }
     setSharedListId(urlListId);
   }
+
   const url = new URL(window.location.href);
   url.searchParams.set('list', listId);
   window.history.replaceState({}, '', url);
@@ -381,19 +431,32 @@ async function stopSharingEventsList() {
   const url = new URL(window.location.href);
   url.searchParams.delete('list');
   window.history.replaceState({}, '', url);
-  for (const ev of getEvents()) {
-    if (!ev.tripId) continue;
-    if (ev.id === getActiveEventId() && isSharedMode()) {
-      disableSharing();
-      continue;
-    }
+  const activeId = getActiveEventId();
+  const activeWasShared = isSharedMode();
+  const sharedEvents = getEvents().filter(e => e.tripId);
+  const tripIdByEventId = new Map(sharedEvents.map(e => [e.id, e.tripId]));
+
+  // Clear every tripId up front, before any network I/O, so the
+  // "no leftover tripId" invariant holds even if this function is
+  // interrupted (tab closed, network drops) partway through the
+  // best-effort refresh below.
+  const events = getEvents();
+  for (const ev of events) {
+    if (tripIdByEventId.has(ev.id)) ev.tripId = null;
+  }
+  saveEventsList(events);
+  if (activeId && activeWasShared && tripIdByEventId.has(activeId)) {
+    disableSharing();
+  }
+
+  for (const [eventId, tripId] of tripIdByEventId) {
+    if (eventId === activeId && activeWasShared) continue; // disableSharing() above already snapshotted this one
     try {
-      const data = await fsFetchTripOnce(ev.tripId);
-      writeEventSnapshot(ev.id, data);
+      const data = await fsFetchTripOnce(tripId);
+      writeEventSnapshot(eventId, data);
     } catch (err) {
       // Firestore unreachable — keep whatever local snapshot already exists
     }
-    updateEventMeta(ev.id, { tripId: null });
   }
 }
 

@@ -161,7 +161,7 @@ function subscribeToList(listId, onEventIds) {
     if (generation !== listSubscriptionGeneration) return;
     unsubListEvents = window.fsOnSnapshot(
       window.fsCollection(window.fsDb, 'lists', listId, 'events'),
-      (snap) => onEventIds(snap.docs.map(d => d.id))
+      (snap) => onEventIds(snap.docs.map(d => d.id), snap.metadata.fromCache)
     );
   });
 }

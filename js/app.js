@@ -78,6 +78,17 @@ function closeListShareSheet() {
   document.getElementById('list-share-sheet').style.display = 'none';
 }
 
+// Races a Firestore-touching promise against a timeout, so a blocked or
+// offline Firebase SDK (window.firebaseReady never resolving) can't hang
+// a UI flow forever behind a disabled button. Mirrors the escape hatch
+// bindSyncLoadingCancel() already provides for the sync-loading overlay.
+function withFirebaseTimeout(promise, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('firebase-timeout')), ms))
+  ]);
+}
+
 function bindListShareSheet() {
   const overlay = document.getElementById('list-share-sheet');
   overlay.addEventListener('click', async (e) => {
@@ -90,7 +101,7 @@ function bindListShareSheet() {
       e.target.disabled = true;
       e.target.textContent = '공유 링크 만드는 중...';
       try {
-        await shareEventsList();
+        await withFirebaseTimeout(shareEventsList());
         openListShareSheet();
         renderEventsScreen();
       } catch (err) {
@@ -126,7 +137,13 @@ function bindListShareSheet() {
     if (e.target.id === 'btn-stop-list-sharing') {
       if (!confirm('공유를 중지하고 이 기기에만 로컬로 저장할까요? 다른 사람과의 실시간 공유가 끊어집니다.')) return;
       e.target.disabled = true;
-      await stopSharingEventsList();
+      try {
+        await withFirebaseTimeout(stopSharingEventsList());
+      } catch (err) {
+        // Best-effort refresh may have timed out, but stopSharingEventsList
+        // clears every tripId synchronously before doing any network I/O,
+        // so local state is already consistent either way.
+      }
       closeListShareSheet();
       renderEventsScreen();
     }
@@ -150,14 +167,20 @@ function bindEventCreateSheet() {
         e.target.textContent = '만드는 중...';
         const id = createEvent(title);
         try {
-          await ensureEventIsShared(id);
-          await fsAddListEvent(listId, id);
+          await withFirebaseTimeout(ensureEventIsShared(id));
+          await withFirebaseTimeout(fsAddListEvent(listId, id));
           // Nothing was written to this event in the gap above (the sheet
           // stayed open and blocked input the whole time), so promoting it
           // now safely picks up the tripId that ensureEventIsShared just
           // set and starts live sync for it — no data to lose.
           promoteActiveEventToShared(id);
         } catch (err) {
+          // ensureEventIsShared may have already set tripId before
+          // fsAddListEvent failed — undo it so the event stays honestly
+          // local instead of silently entering shared mode (with only its
+          // near-empty initial snapshot) the next time it's opened, which
+          // would wipe out anything entered after this failure.
+          updateEventMeta(id, { tripId: null });
           alert('모임을 만들었지만 공유 목록에 등록하지 못했습니다. 네트워크를 확인하고 다시 시도해주세요.');
         }
       } else {
