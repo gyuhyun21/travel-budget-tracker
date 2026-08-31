@@ -124,6 +124,43 @@ function renderSettingsScreen() {
   `;
 }
 
+// Only for someone who's actually joined a shared list — installing to
+// the home screen is worth suggesting there, but not to a first-time
+// visitor who's never used sharing. Suppressed once already installed
+// (standalone display mode) or once the user has dismissed it.
+function installBannerHtml() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) return '';
+  if (!getSharedListId()) return '';
+  if (localStorage.getItem('cmb_install_banner_dismissed')) return '';
+
+  if (hasDeferredInstallPrompt()) {
+    return `
+      <div class="install-banner">
+        <span>홈 화면에 추가하고 더 편하게 사용하세요.</span>
+        <div class="install-banner-actions">
+          <button type="button" id="btn-install-app" class="install-banner-btn">추가하기</button>
+          <button type="button" id="btn-dismiss-install-banner" class="ios-header-link">닫기</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    return `
+      <div class="install-banner">
+        <span>공유 버튼 → 홈 화면에 추가를 누르면 앱처럼 쓸 수 있어요.</span>
+        <div class="install-banner-actions">
+          <button type="button" id="btn-dismiss-install-banner" class="ios-header-link">닫기</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
 function renderEventsScreen() {
   const container = document.getElementById('screen-events');
   // 완료된 모임은 항상 진행중인 모임 아래로 — 상태가 같으면 최근 수정순.
@@ -139,6 +176,7 @@ function renderEventsScreen() {
     return {
       ...ev,
       title: settings.tripName?.trim() || '제목 없음',
+      creator: settings.createdBy?.trim() || '',
       dateLabel: hasDates ? dpFormatRange(settings.tripStartDate, settings.tripEndDate) : '',
       totalSpent
     };
@@ -153,6 +191,7 @@ function renderEventsScreen() {
         <button type="button" class="ios-header-action" id="btn-create-event" aria-label="새 모임">${ICON_PLUS}</button>
       </div>
     </div>
+    ${installBannerHtml()}
     ${enriched.length ? `
       <div class="ios-chip-row" id="events-filter-row" style="margin-bottom:16px">
         <button type="button" class="ios-chip event-filter-tab ${eventsFilter === 'all' ? 'active' : ''}" data-value="all">전체</button>
@@ -164,7 +203,10 @@ function renderEventsScreen() {
         ${filtered.map(ev => `
           <button type="button" class="event-card" data-id="${ev.id}">
             <span class="event-card-main">
-              <span class="event-card-title">${escapeHtml(ev.title)}</span>
+              <span class="event-card-title-row">
+                <span class="event-card-title">${escapeHtml(ev.title)}</span>
+                ${ev.creator ? `<span class="event-card-creator">${escapeHtml(ev.creator)}</span>` : ''}
+              </span>
               <span class="event-card-meta">${ev.dateLabel ? `${escapeHtml(ev.dateLabel)} · ` : ''}${Math.round(ev.totalSpent).toLocaleString()}원</span>
             </span>
             <span class="event-status-badge ${ev.status === 'completed' ? 'completed' : ''}">${ev.status === 'completed' ? '완료' : '진행중'}</span>

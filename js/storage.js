@@ -124,7 +124,7 @@ function createEvent(title) {
   const now = nextEventTimestamp();
   events.push({ id, status: 'active', tripId: null, createdAt: now, updatedAt: now });
   saveEventsList(events);
-  localStorage.setItem(eventKey(id, 'settings'), JSON.stringify({ tripName: title }));
+  localStorage.setItem(eventKey(id, 'settings'), JSON.stringify({ tripName: title, createdBy: getUserName() }));
   enterEvent(id);
   return id;
 }

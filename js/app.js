@@ -1,3 +1,20 @@
+// Chrome/Android fires this when the page meets install criteria; calling
+// preventDefault() suppresses its own mini-infobar so our events-screen
+// banner (installBannerHtml() in render.js) can trigger the native prompt
+// on demand instead, only for people who've actually joined a shared list.
+// iOS Safari never fires this — there's no programmatic install there at
+// all, so the banner falls back to a manual "공유 → 홈 화면에 추가" hint.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (document.getElementById('screen-events')?.classList.contains('active')) renderEventsScreen();
+});
+
+function hasDeferredInstallPrompt() {
+  return !!deferredInstallPrompt;
+}
+
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
@@ -48,6 +65,24 @@ function bindEventsScreen() {
     const filterTab = e.target.closest('.event-filter-tab');
     if (filterTab) {
       eventsFilter = filterTab.dataset.value;
+      renderEventsScreen();
+      return;
+    }
+
+    if (e.target.closest('#btn-install-app')) {
+      if (!deferredInstallPrompt) return;
+      const promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      promptEvent.prompt();
+      // The outcome (accepted/dismissed) doesn't change anything we'd do
+      // differently — either way the banner shouldn't show again this
+      // session since the one-shot prompt event is now spent.
+      renderEventsScreen();
+      return;
+    }
+
+    if (e.target.closest('#btn-dismiss-install-banner')) {
+      localStorage.setItem('cmb_install_banner_dismissed', '1');
       renderEventsScreen();
       return;
     }
