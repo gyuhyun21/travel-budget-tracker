@@ -209,6 +209,10 @@ function renderListShareSheetBody() {
   container.innerHTML = `
     <p class="field-hint" style="margin:0 0 12px">이 목록을 공유하면 링크를 가진 사람 누구나 모든 모임을 보고, 지출을 기록하고, 새 모임을 추가할 수 있어요.</p>
     <button type="button" id="btn-start-list-sharing" class="btn-primary" style="margin-top:0">목록 공유하기</button>
+    <h3 class="section-title">다른 공유 링크로 참가하기</h3>
+    <p class="field-hint" style="margin:0 0 10px">홈 화면에 추가한 앱처럼 링크 주소가 그대로 유지되지 않는 경우, 받은 공유 링크를 여기에 붙여넣으면 참가할 수 있어요.</p>
+    <input type="text" id="input-join-list-link" placeholder="공유 링크 붙여넣기" autocomplete="off">
+    <button type="button" id="btn-join-list-link" class="btn-primary" style="margin-top:10px">참가하기</button>
   `;
 }
 

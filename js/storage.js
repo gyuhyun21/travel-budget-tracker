@@ -265,6 +265,24 @@ function updateEventMetaIn(events, id, patch) {
   if (meta) Object.assign(meta, patch);
 }
 
+// Verifies a list actually exists in Firestore, then binds this device to
+// it: persists the id, reflects it in the URL, and starts watching its
+// membership. Returns false (no alert, no side effects) if the list
+// doesn't exist, so callers can show their own context-appropriate
+// message — a boot-time auto-join and a user-driven paste-a-link form
+// need different wording for the same failure.
+async function joinSharedList(listId) {
+  await window.firebaseReady;
+  const listDoc = await window.fsGetDoc(window.fsDoc(window.fsDb, 'lists', listId));
+  if (!listDoc.exists()) return false;
+  setSharedListId(listId);
+  const url = new URL(window.location.href);
+  url.searchParams.set('list', listId);
+  window.history.replaceState({}, '', url);
+  startListSync();
+  return true;
+}
+
 // Call once at startup. If the page was opened with ?list=ID, binds this
 // device to that shared list (switching away from whatever list it was
 // previously in, if different). Otherwise, if this device was already in
@@ -277,16 +295,14 @@ async function resumeOrJoinSharedList() {
   if (!listId) return false;
 
   if (urlListId && urlListId !== storedListId) {
-    await window.firebaseReady;
-    const listDoc = await window.fsGetDoc(window.fsDoc(window.fsDb, 'lists', listId));
-    if (!listDoc.exists()) {
+    const joined = await joinSharedList(urlListId);
+    if (!joined) {
       alert('공유 링크가 유효하지 않습니다 (목록을 찾을 수 없어요). 모임 목록 화면으로 이동합니다.');
       const url = new URL(window.location.href);
       url.searchParams.delete('list');
       window.history.replaceState({}, '', url);
-      return false;
     }
-    setSharedListId(urlListId);
+    return joined;
   }
 
   const url = new URL(window.location.href);

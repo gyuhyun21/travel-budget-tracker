@@ -147,6 +147,29 @@ function bindListShareSheet() {
       closeListShareSheet();
       renderEventsScreen();
     }
+
+    if (e.target.id === 'btn-join-list-link') {
+      const input = document.getElementById('input-join-list-link');
+      const listId = extractListId(input.value);
+      if (!listId) { input.focus(); return; }
+      e.target.disabled = true;
+      e.target.textContent = '참가하는 중...';
+      try {
+        const joined = await withFirebaseTimeout(joinSharedList(listId));
+        if (!joined) {
+          alert('공유 링크가 유효하지 않습니다. 링크를 다시 확인해주세요.');
+          e.target.disabled = false;
+          e.target.textContent = '참가하기';
+          return;
+        }
+        openListShareSheet();
+        renderEventsScreen();
+      } catch (err) {
+        alert('참가하지 못했습니다. 네트워크 연결을 확인해주세요.');
+        e.target.disabled = false;
+        e.target.textContent = '참가하기';
+      }
+    }
   });
 }
 
@@ -762,39 +785,6 @@ function showUsernamePrompt(onDone) {
 }
 
 function boot() {
-  // TEMPORARY DIAGNOSTIC — remove once the Home Screen join issue is
-  // root-caused. Only fires in standalone (Add to Home Screen) mode, since
-  // that's the one context where joining a shared link is reported broken.
-  if (window.navigator.standalone) {
-    (async () => {
-      const lines = [];
-      lines.push('URL: ' + location.href);
-      lines.push('urlListId: ' + getListIdFromUrl());
-      lines.push('storedListId: ' + getSharedListId());
-      try {
-        const fbStatus = await Promise.race([
-          window.firebaseReady.then(() => 'OK'),
-          new Promise(r => setTimeout(() => r('TIMEOUT after 8s'), 8000))
-        ]);
-        lines.push('firebaseReady: ' + fbStatus);
-        if (fbStatus === 'OK') {
-          const urlListId = getListIdFromUrl();
-          if (urlListId) {
-            try {
-              const listDoc = await window.fsGetDoc(window.fsDoc(window.fsDb, 'lists', urlListId));
-              lines.push('listDoc.exists(): ' + listDoc.exists());
-            } catch (err) {
-              lines.push('listDoc fetch error: ' + err.message);
-            }
-          }
-        }
-      } catch (err) {
-        lines.push('diagnostic error: ' + err.message);
-      }
-      alert(lines.join('\n'));
-    })();
-  }
-
   resumeOrJoinSharedList();
   showScreen('events');
 }

@@ -11,6 +11,25 @@ function shareUrlForList(listId) {
   return url.toString();
 }
 
+// Accepts either a pasted full share link or a bare list id (in case
+// someone strips the link down themselves) and returns the id to join,
+// or null for empty input. Used by the "다른 공유 링크로 참가하기" flow —
+// a fallback for contexts where opening the link directly doesn't work
+// (e.g. an iOS Home Screen install, which launches from its own fixed
+// start_url and never sees the ?list= the user actually tapped).
+function extractListId(input) {
+  const trimmed = (input || '').trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    const id = url.searchParams.get(LIST_ID_PARAM);
+    if (id) return id;
+  } catch (err) {
+    // not a full URL — fall through and treat the raw input as a bare id
+  }
+  return trimmed;
+}
+
 window.firebaseReady = new Promise((resolve) => {
   if (window.fsDb) { resolve(); return; }
   window.addEventListener('firebase-ready', () => resolve(), { once: true });
