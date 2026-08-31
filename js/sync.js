@@ -1,4 +1,3 @@
-const TRIP_ID_PARAM = 'trip';
 const LIST_ID_PARAM = 'list';
 
 function getListIdFromUrl() {
@@ -17,22 +16,11 @@ window.firebaseReady = new Promise((resolve) => {
   window.addEventListener('firebase-ready', () => resolve(), { once: true });
 });
 
-function getTripIdFromUrl() {
-  return new URLSearchParams(window.location.search).get(TRIP_ID_PARAM);
-}
-
 function generateShortId() {
   return Array.from(crypto.getRandomValues(new Uint8Array(9)))
     .map(b => b.toString(36).padStart(2, '0'))
     .join('')
     .slice(0, 14);
-}
-
-function shareUrlForTrip(tripId) {
-  const url = new URL(window.location.href);
-  url.search = '';
-  url.searchParams.set(TRIP_ID_PARAM, tripId);
-  return url.toString();
 }
 
 async function fsCreateTrip(tripId, settings, expenses, packingItems) {
