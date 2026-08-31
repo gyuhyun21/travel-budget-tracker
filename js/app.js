@@ -762,6 +762,39 @@ function showUsernamePrompt(onDone) {
 }
 
 function boot() {
+  // TEMPORARY DIAGNOSTIC — remove once the Home Screen join issue is
+  // root-caused. Only fires in standalone (Add to Home Screen) mode, since
+  // that's the one context where joining a shared link is reported broken.
+  if (window.navigator.standalone) {
+    (async () => {
+      const lines = [];
+      lines.push('URL: ' + location.href);
+      lines.push('urlListId: ' + getListIdFromUrl());
+      lines.push('storedListId: ' + getSharedListId());
+      try {
+        const fbStatus = await Promise.race([
+          window.firebaseReady.then(() => 'OK'),
+          new Promise(r => setTimeout(() => r('TIMEOUT after 8s'), 8000))
+        ]);
+        lines.push('firebaseReady: ' + fbStatus);
+        if (fbStatus === 'OK') {
+          const urlListId = getListIdFromUrl();
+          if (urlListId) {
+            try {
+              const listDoc = await window.fsGetDoc(window.fsDoc(window.fsDb, 'lists', urlListId));
+              lines.push('listDoc.exists(): ' + listDoc.exists());
+            } catch (err) {
+              lines.push('listDoc fetch error: ' + err.message);
+            }
+          }
+        }
+      } catch (err) {
+        lines.push('diagnostic error: ' + err.message);
+      }
+      alert(lines.join('\n'));
+    })();
+  }
+
   resumeOrJoinSharedList();
   showScreen('events');
 }
