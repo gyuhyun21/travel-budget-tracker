@@ -43,17 +43,6 @@ function renderSettingsScreen() {
   container.innerHTML = `
     <div class="ios-header"><h1 class="ios-large-title">설정</h1></div>
 
-    <h3 class="section-title">내 정보</h3>
-    <div class="card-section">
-      <div class="card-section-pad">
-        <form id="username-form">
-          <label class="field-label" style="margin-top:0" for="input-settings-user-name">내 이름</label>
-          <input type="text" id="input-settings-user-name" value="${escapeHtml(getUserName())}" placeholder="이름 또는 닉네임">
-          <button type="submit" class="btn-primary" style="margin-top:14px">이름 저장</button>
-        </form>
-      </div>
-    </div>
-
     <h3 class="section-title">제목 &amp; 기간</h3>
     <div class="card-section">
       <div class="card-section-pad">
@@ -176,7 +165,6 @@ function renderEventsScreen() {
     return {
       ...ev,
       title: settings.tripName?.trim() || '제목 없음',
-      creator: settings.createdBy?.trim() || '',
       dateLabel: hasDates ? dpFormatRange(settings.tripStartDate, settings.tripEndDate) : '',
       totalSpent
     };
@@ -203,10 +191,7 @@ function renderEventsScreen() {
         ${filtered.map(ev => `
           <button type="button" class="event-card" data-id="${ev.id}">
             <span class="event-card-main">
-              <span class="event-card-title-row">
-                <span class="event-card-title">${escapeHtml(ev.title)}</span>
-                ${ev.creator ? `<span class="event-card-creator">${escapeHtml(ev.creator)}</span>` : ''}
-              </span>
+              <span class="event-card-title">${escapeHtml(ev.title)}</span>
               <span class="event-card-meta">${ev.dateLabel ? `${escapeHtml(ev.dateLabel)} · ` : ''}${Math.round(ev.totalSpent).toLocaleString()}원</span>
             </span>
             <span class="event-status-badge ${ev.status === 'completed' ? 'completed' : ''}">${ev.status === 'completed' ? '완료' : '진행중'}</span>

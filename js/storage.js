@@ -6,19 +6,6 @@ function getParticipants() {
   return raw.map(p => typeof p === 'string' ? { name: p, count: 1 } : p);
 }
 
-// This device's display name. Deliberately outside event storage/deleteEvent
-// — it identifies the person using this browser, not any one event's data,
-// so it should survive deleting/switching between events.
-const USER_NAME_KEY = 'cmb_user_name';
-
-function getUserName() {
-  return localStorage.getItem(USER_NAME_KEY) || '';
-}
-
-function setUserName(name) {
-  localStorage.setItem(USER_NAME_KEY, name);
-}
-
 /* ---------- Event index ---------- */
 
 const EVENTS_KEY = 'cmb_events';
@@ -124,7 +111,7 @@ function createEvent(title) {
   const now = nextEventTimestamp();
   events.push({ id, status: 'active', tripId: null, createdAt: now, updatedAt: now });
   saveEventsList(events);
-  localStorage.setItem(eventKey(id, 'settings'), JSON.stringify({ tripName: title, createdBy: getUserName() }));
+  localStorage.setItem(eventKey(id, 'settings'), JSON.stringify({ tripName: title }));
   enterEvent(id);
   return id;
 }

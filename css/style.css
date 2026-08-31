@@ -988,7 +988,6 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
 }
 .card-section .event-card:last-child { border-bottom: none; }
 .event-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.event-card-title-row { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
 .event-card-title {
   font-size: 15.5px;
   font-weight: 600;
@@ -996,9 +995,7 @@ hr { border: none; border-top: 0.5px solid var(--color-separator); margin: 20px 
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
-.event-card-creator { font-size: 11px; font-weight: 400; color: var(--color-ink-faint); white-space: nowrap; flex-shrink: 0; }
 .event-card-meta { font-size: 12.5px; color: var(--color-ink-soft); }
 .event-status-badge {
   flex-shrink: 0;

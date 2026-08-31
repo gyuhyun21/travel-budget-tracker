@@ -267,14 +267,6 @@ function bindSettingsForm() {
   const container = document.getElementById('screen-settings');
 
   container.addEventListener('submit', (e) => {
-    if (e.target.id === 'username-form') {
-      e.preventDefault();
-      const name = document.getElementById('input-settings-user-name').value.trim();
-      if (!name) return;
-      setUserName(name);
-      renderSettingsScreen();
-      return;
-    }
     if (e.target.id === 'settings-form') {
       e.preventDefault();
       const tripStartDate = document.getElementById('input-trip-start').value;
@@ -799,36 +791,12 @@ bindPackingScreen();
 bindPackingAddSheet();
 bindParticipantSheet();
 
-function showUsernamePrompt(onDone) {
-  const overlay = document.getElementById('username-sheet');
-  const input = document.getElementById('input-user-name');
-  const btn = document.getElementById('btn-save-username');
-  overlay.style.display = 'flex';
-  const submit = () => {
-    const name = input.value.trim();
-    if (!name) { input.focus(); return; }
-    setUserName(name);
-    overlay.style.display = 'none';
-    btn.removeEventListener('click', submit);
-    input.removeEventListener('keydown', onKeydown);
-    onDone();
-  };
-  const onKeydown = (e) => { if (e.key === 'Enter') submit(); };
-  btn.addEventListener('click', submit);
-  input.addEventListener('keydown', onKeydown);
-  input.focus();
-}
-
 function boot() {
   resumeOrJoinSharedList();
   showScreen('events');
 }
 
-if (!getUserName()) {
-  showUsernamePrompt(boot);
-} else {
-  boot();
-}
+boot();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
