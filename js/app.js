@@ -791,8 +791,27 @@ bindPackingScreen();
 bindPackingAddSheet();
 bindParticipantSheet();
 
+// A brand-new join (this device has never seen this exact list before)
+// needs a real Firestore round-trip before the list can show up — with no
+// loading state, a slow or briefly-flaky connection just looks like "the
+// shared list never showed up," which is what people actually reported.
+// A returning visit to an already-known list only touches localStorage in
+// this call, so it's effectively instant and doesn't need the overlay.
 function boot() {
-  resumeOrJoinSharedList();
+  const urlListId = getListIdFromUrl();
+  const isNewJoin = urlListId && urlListId !== getSharedListId();
+  if (isNewJoin) {
+    document.getElementById('sync-loading').style.display = 'flex';
+    withFirebaseTimeout(resumeOrJoinSharedList())
+      .catch(() => {
+        alert('공유 목록을 불러오지 못했습니다. 네트워크 연결을 확인하고 새로고침해주세요.');
+      })
+      .finally(() => {
+        document.getElementById('sync-loading').style.display = 'none';
+      });
+  } else {
+    resumeOrJoinSharedList();
+  }
   showScreen('events');
 }
 
