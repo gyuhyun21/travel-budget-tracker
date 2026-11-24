@@ -17,15 +17,23 @@ function parseMoneyInput(value) {
 
 function formatMoneyInput(el) {
   const cursorFromEnd = el.value.length - el.selectionEnd;
+  // Only fields marked data-allow-negative (expense amount) keep a single leading '-'
+  const sign = el.dataset.allowNegative !== undefined && /^\s*[-−]/.test(el.value) ? '-' : '';
   const raw = el.value.replace(/[^0-9.]/g, '');
   const firstDot = raw.indexOf('.');
   const intPart = firstDot === -1 ? raw : raw.slice(0, firstDot);
   const decPart = firstDot === -1 ? '' : raw.slice(firstDot, firstDot + 3);
   const cleanInt = intPart.replace(/^0+(?=\d)/, '');
   const formattedInt = cleanInt === '' ? '' : Number(cleanInt).toLocaleString('en-US');
-  el.value = formattedInt + decPart;
+  el.value = sign + formattedInt + decPart;
   const newPos = Math.max(0, el.value.length - cursorFromEnd);
   el.setSelectionRange(newPos, newPos);
+}
+
+// Flip the sign of a money input (iPhone decimal keypad has no '-' key)
+function toggleMoneySign(el) {
+  el.value = el.value.startsWith('-') ? el.value.slice(1) : '-' + el.value;
+  formatMoneyInput(el);
 }
 
 function toKRW(amount, currency, settings) {

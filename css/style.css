@@ -287,6 +287,8 @@ main {
 .category-row .cat-label { flex: 0 0 56px; font-size: 14px; color: var(--color-ink); font-weight: 400; }
 .category-row .cat-bar-track { display: block; flex: 1; height: 6px; background: var(--color-fill); border-radius: 3px; overflow: hidden; }
 .category-row .cat-bar-fill { display: block; height: 100%; border-radius: 3px; }
+.category-row .cat-bar-fill.is-negative { opacity: 0.4; }
+.category-row .cat-amount.is-negative { color: var(--color-success); }
 .category-row .cat-amount {
   flex: 0 0 auto;
   font-size: 13.5px;
@@ -388,6 +390,21 @@ input[type="number"] {
   font-family: inherit;
   -webkit-appearance: none;
 }
+.money-sign-row { display: flex; gap: 8px; }
+.money-sign-row .input-money { flex: 1; min-width: 0; }
+.btn-money-sign {
+  flex: 0 0 56px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-fill);
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 590;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn-money-sign:active { opacity: 0.7; }
+
 input:focus { outline: none; background: var(--color-surface-raised); }
 input::placeholder { color: var(--color-ink-faint); }
 

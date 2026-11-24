@@ -261,9 +261,9 @@ function renderDashboardScreen() {
   }
   const categoryRows = EXPENSE_CATEGORIES
     .map(cat => ({ cat, amount: byCategory[cat.id] || 0 }))
-    .filter(row => row.amount > 0)
+    .filter(row => row.amount !== 0)
     .sort((a, b) => b.amount - a.amount);
-  const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => r.amount));
+  const maxCategoryAmount = Math.max(1, ...categoryRows.map(r => Math.abs(r.amount)));
 
   if (dashboardCategoryFilter !== 'all' && !categoryRows.some(r => r.cat.id === dashboardCategoryFilter)) {
     dashboardCategoryFilter = 'all';
@@ -300,8 +300,8 @@ function renderDashboardScreen() {
           <div class="category-row">
             <span class="cat-dot" style="background:${cat.color}"></span>
             <span class="cat-label">${cat.label}</span>
-            <span class="cat-bar-track"><span class="cat-bar-fill" style="width:${Math.round(amount / maxCategoryAmount * 100)}%; background:${cat.color}"></span></span>
-            <span class="cat-amount">${Math.round(amount).toLocaleString()}원</span>
+            <span class="cat-bar-track"><span class="cat-bar-fill${amount < 0 ? ' is-negative' : ''}" style="width:${Math.round(Math.abs(amount) / maxCategoryAmount * 100)}%; background:${cat.color}"></span></span>
+            <span class="cat-amount${amount < 0 ? ' is-negative' : ''}">${Math.round(amount).toLocaleString()}원</span>
           </div>
         `).join('')}
       </div>
@@ -442,7 +442,11 @@ function renderExpenseFormScreen(editId = null) {
           ` : ''}
 
           <label class="field-label" for="input-expense-amount">금액</label>
-          <input type="text" inputmode="decimal" class="input-money" id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
+          <div class="money-sign-row">
+            <button type="button" class="btn-money-sign" id="btn-toggle-amount-sign" aria-label="금액 부호 바꾸기 (마이너스/플러스)">−/+</button>
+            <input type="text" inputmode="decimal" class="input-money" data-allow-negative id="input-expense-amount" value="${existing ? formatMoneyValue(existing.amount) : ''}" required>
+          </div>
+          <p class="field-hint">환급·취소처럼 빼야 할 금액은 −/+ 단추로 마이너스로 바꿔 주세요.</p>
 
           <label class="field-label">카테고리</label>
           <div class="ios-chip-row" id="category-segmented">${categorySegmentedHtml(selectedCategory)}</div>

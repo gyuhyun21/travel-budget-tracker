@@ -462,6 +462,10 @@ function bindExpenseForm() {
   });
 
   container.addEventListener('click', async (e) => {
+    if (e.target.closest('#btn-toggle-amount-sign')) {
+      toggleMoneySign(document.getElementById('input-expense-amount'));
+      return;
+    }
     if (e.target.id === 'btn-delete-expense') {
       const id = document.getElementById('input-expense-id').value;
       deleteExpense(id);
